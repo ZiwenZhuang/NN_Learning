@@ -12,18 +12,18 @@ class LeNet(nn.Module):
 		# start setting up the network
 		self.conv = nn.Sequential(
 			nn.Conv2d(1, 6, kernel_size = 5, stride = 1, padding = 2),
-			nn.LeakyReLU(),
+			nn.Sigmoid(),
 			nn.AvgPool2d(kernel_size = 2, stride = 2),
 
 			nn.Conv2d(6, 16, kernel_size = 5, stride = 1, padding = 0),
-			nn.LeakyReLU(),
+			nn.Sigmoid(),
 			nn.AvgPool2d(kernel_size = 2, stride = 2),
 			)
 		self.fc = nn.Sequential(
 			nn.Linear(400, 120),
-			nn.LeakyReLU(),
+			nn.ReLU(),
 			nn.Linear(120, 84),
-			nn.LeakyReLU(),
+			nn.ReLU(),
 			nn.Linear(84, 10),
 			nn.Softmax(1)
 			)
@@ -69,9 +69,8 @@ def train(data_path):
 	# setup the network
 	le_net = LeNet()
 	# setup the optimizer and all those hyper-parameters
-	lr = 65	# learning rate
-	mt = 0	# momentum
-	optimizer = torch.optim.SGD(le_net.parameters(), lr = lr, momentum = mt)
+	lr = 2e-2	# learning rate
+	optimizer = torch.optim.Adam(le_net.parameters(), lr = lr)
 
 	print("\nStart training the network...")
 
