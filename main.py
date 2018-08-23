@@ -1,17 +1,22 @@
 # This is only a puppet main file that makes it easy to simply press F5 to run
 # the program
 import config
+import torch
 import matplotlib.pyplot as plt
 import LeNetRecog.binHandler as binHandler
+import LeNetRecog.LeNet as LeNet
+import numpy as np
 
-if __name__ == "__main__":
-    
-    mat = binHandler.bin2mat(config.MnistData["train_img"])
-    label = binHandler.bin2num(config.MnistData["train_label"])
-    while True:
-        im = plt.imshow(mat.__next__().astype(float), cmap = plt.cm.Greys)
-        print(label.__next__())
-        plt.pause(1)
+def test_LeNet_utils():    
+    imgs = torch.from_numpy(binHandler.all_img(config.MnistData["train_img"])).float()
+    labels = binHandler.all_label(config.MnistData["train_label"])
+    for i in range(60000):
+        im = plt.imshow(imgs[i][0], cmap = plt.cm.Greys)
+        print(labels[i])
+        plt.pause(0.3)
         plt.draw()
 
-    
+if __name__ == "__main__":
+    #test_LeNet_utils()
+    trained_net = LeNet.train(config.MnistData)
+    pass
