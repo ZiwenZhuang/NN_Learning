@@ -1,7 +1,7 @@
 # LeNet-5
 
 ## Device
-I implemented it only on CPU, since I haven't tried to figure out how to use cuda. Also, I don't hav ea GPU for now...
+I implemented it only on CPU, since I haven't tried to figure out how to use cuda. Also, I don't have a GPU for now...
 
 ## Implementation Reference
 1. I implemented the network architecture based on the image at https://medium.com/@shahariarrabby/lenet-5-alexnet-vgg-16-from-deeplearning-ai-2a4fa5f26344

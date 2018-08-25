@@ -9,3 +9,10 @@ MnistData = {
     "test_img": Data_Path + "MNIST-dataset/t10k-images.idx3-ubyte",
     "test_label": Data_Path + "MNIST-dataset/t10k-labels.idx1-ubyte"
     }
+
+COCOData = {
+	"train_img": Data_Path,
+	"train_target": Data_Path,
+	"test_img": Data_Path,
+	"test_target": Data_Path
+	}

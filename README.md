@@ -12,5 +12,6 @@ Only python packages are needed, and you don't need a GPU currently, since I don
 * opencv-python
 * pypng
 * pytorch (have to be installed manully)
-
+* matplotlib (show the learning loss)
+* COCO api (You have to install this manully. On windows you can refer to [this](https://github.com/philferriere/cocoapi))
 BTW: I run these codes on windows. But don't forget to setup the data path in the config.py file.

@@ -1,4 +1,5 @@
 ﻿import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -13,11 +14,11 @@ class LeNet(nn.Module):
 		# start setting up the network
 		self.conv = nn.Sequential(
 			nn.Conv2d(1, 6, kernel_size = 5, stride = 1, padding = 2),
-			nn.Sigmoid(),
+			nn.Tanh(),
 			nn.AvgPool2d(kernel_size = 2, stride = 2),
 
 			nn.Conv2d(6, 16, kernel_size = 5, stride = 1, padding = 0),
-			nn.Sigmoid(),
+			nn.Tanh(),
 			nn.AvgPool2d(kernel_size = 2, stride = 2),
 			)
 		self.fc = nn.Sequential(
@@ -104,17 +105,22 @@ def train(data_path, store_path = "./LeNetRecog/LeNet_learnt.pth", epoch = 500):
 
 		# report porformance
 		print("In epoch {:>3}, the loss is {:<15}".format(epo, loss.item()))
+		loss_list.append(loss.item())
+
+		# decide if to stop training
 		if abs(loss.item() - last_loss) < 0.0001:
 			break
 		else:
 			last_loss = loss.item()
-			loss_list.append(last_loss)
 
 	print("End training the network!")
 
 	print("Saving learnt model parameters at: " + store_path, end = "\t")
 	le_net.savetofile(store_path)
 	print("Done!")
+
+	plt.plot(loss_list)
+	plt.waitforbuttonpress(timeout = -1) # not return until button pressed
 	
 	return le_net
 
@@ -130,11 +136,11 @@ def test(data_path, Net = None, filepath = None):
 	else:
 		assert isinstance(Net, LeNet)
 		nnet = Net
-
-	print("Acquired trained network, start testing...")
 	
 	inputs = torch.from_numpy(bH.all_img(data_path["test_img"])).float() # get test images
 	labels = torch.from_numpy(bH.all_label(data_path["test_label"])).long() # get test labels
+
+	print("Acquired trained network, start testing...")
 
 	out = nnet(inputs) # a (N, C) matrix
 	

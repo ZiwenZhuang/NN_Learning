@@ -1,0 +1,3 @@
+﻿# Faster RCNN
+## Device
+It seems that running on CPU is ok for all the faster-rcnn process...

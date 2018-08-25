@@ -17,6 +17,6 @@ def test_LeNet_utils():
         plt.draw()
 
 if __name__ == "__main__":
-    #test_LeNet_utils()
-    #trained_net = LeNet.train(config.MnistData)
-    LeNet.test(config.MnistData, filepath = "./LeNetRecog/LeNet_learnt.pth")
+	#test_LeNet_utils()
+	trained_net = LeNet.train(config.MnistData)
+	LeNet.test(config.MnistData, filepath = "./LeNetRecog/LeNet_learnt.pth")
