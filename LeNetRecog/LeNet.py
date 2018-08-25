@@ -1,7 +1,7 @@
 ﻿import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.dataset import DataLoader
+from torch.utils.data import DataLoader
 
 from . import binHandler as bH
 
@@ -68,7 +68,7 @@ class LeNet(nn.Module):
 		return criterion(out, target)
 
 
-def train(data_path, store_path = "./LeNet_learnt.pth"):
+def train(data_path, store_path = "./LeNetRecog/LeNet_learnt.pth", epoch = 500):
 	print("Loading dataset and setting up network as well as optimizer...")
 	# read all the pictures 
 	#and put them together in a single 4D matrix
@@ -89,7 +89,8 @@ def train(data_path, store_path = "./LeNet_learnt.pth"):
 	print("\nStart training the network...")
 
 	last_loss = 0
-	for epo in range(999):
+	loss_list = []
+	for epo in range(epoch):
 		# feed forward the tensors
 		out = le_net(input)
 
@@ -107,10 +108,38 @@ def train(data_path, store_path = "./LeNet_learnt.pth"):
 			break
 		else:
 			last_loss = loss.item()
+			loss_list.append(last_loss)
 
 	print("End training the network!")
 
 	print("Saving learnt model parameters at: " + store_path, end = "\t")
 	le_net.savetofile(store_path)
 	print("Done!")
+	
 	return le_net
+
+def test(data_path, Net = None, filepath = None):
+	''' This perform testing and you can provide either the learnt Net or provide the learnt
+	neural network file (stored by previous train function)
+	'''
+	# check input network
+	if Net == None:
+		assert isinstance(filepath, str)
+		nnet = LeNet()
+		nnet.loadfromfile(filepath)
+	else:
+		assert isinstance(Net, LeNet)
+		nnet = Net
+
+	print("Acquired trained network, start testing...")
+	
+	inputs = torch.from_numpy(bH.all_img(data_path["test_img"])).float() # get test images
+	labels = torch.from_numpy(bH.all_label(data_path["test_label"])).long() # get test labels
+
+	out = nnet(inputs) # a (N, C) matrix
+	
+	# extract the maximum score index and count the rate
+	pred = out.data.max(1)[1]
+	correctcount = pred.eq(labels.data).sum()
+
+	print("The correctness among the test data is: {:>4}%".format(100 * correctcount / len(labels)))
