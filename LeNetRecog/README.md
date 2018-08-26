@@ -18,3 +18,8 @@ I implemented it only on CPU, since I haven't tried to figure out how to use cud
 * Please invoke the training method at the main.py in the root folder. And don't forget to provide the dataset path at config.py
 * You can also specify where you want to store the learnt model, which has been implemented in the LeNet class.
 * When doing the test, you can provide either the learnt file or the object to the function.
+
+## Recordings
+1. In the convlution layers, using Tanh can reach 98% accuracy while Sigmoid hit the 97% accuracy.
+2. The loss curve is down here  
+	![loss curve](./loss_curve.png)

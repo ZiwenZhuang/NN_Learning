@@ -140,7 +140,7 @@ def test(data_path, Net = None, filepath = None):
 	inputs = torch.from_numpy(bH.all_img(data_path["test_img"])).float() # get test images
 	labels = torch.from_numpy(bH.all_label(data_path["test_label"])).long() # get test labels
 
-	print("Acquired trained network, start testing...")
+	print("\nAcquired trained network, start testing...")
 
 	out = nnet(inputs) # a (N, C) matrix
 	
