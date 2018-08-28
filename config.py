@@ -11,8 +11,8 @@ MnistData = {
     }
 
 COCOData = {
-	"train_img": Data_Path,
-	"train_target": Data_Path,
-	"test_img": Data_Path,
-	"test_target": Data_Path
+	"train_img": Data_Path + "COCO2014",
+	"train_target": Data_Path + "COCO2014",
+	"test_img": Data_Path + "COCO2014",
+	"test_target": Data_Path + "COCO2014"
 	}
