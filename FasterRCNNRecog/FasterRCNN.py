@@ -15,18 +15,49 @@ class RPN(nn.module):
 		
 
 	@staticmethod
-	def generate_anchor(img, scales = [128, 256, 512], ratios = [0.5, 1, 2]):
-		'''	Generating the 4 parameters (center_x, center_y, height, width) of each anchor.
+	def generate_anchor(img, stride = 16, scales = [128, 256, 512], ratios = [0.5, 1, 2]):
+		'''	Generating the 4 parameters (x1, y1, x2, y2) of each anchor.
 			And concatenate them along the 0-th dimension.
 			---------------------------------
-			img: input image matrix (only two dimension)
-			scales: the width of anchor (when it is a square)
-			ratios: under certain scale, the ratio between width and height
+			img: input image matrix (N, C, H, W)- 4 dimensions                 x1, y1--------+
+			stride: the stride that the sliding window woudl move                 |          |
+			scales: the width of anchor (when it is a square)                     |          |
+			ratios: under certain scale, the ratio between width and height       +-------x2, y2
 			---------------------------------
-			output: a tensor (N, 4) a series of anchor parameters
+			output: a tensor (H*W, 4) a series of anchor parameters, for the memory efficiency
 		'''
-		c_x, c_y = torch.meshgrid([img.shape()[0], img.shape()[1]])
+		_num_anchors = img.shape()[-2] * img.shape()[-1]
+		x_ctr, y_ctr = torch.meshgrid([img.shape()[2], img.shape()[3]])
+		# keep the array into one dimension, (2 dimension in all)
+		x_ctr = x_ctr.reshape((-1, 1)).expand(_num_anchors * len(scales) * len(ratios), 1)
+		y_ctr = y_ctr.reshape((-1, 1)).expand(_num_anchors * len(scales) * len(ratios), 1)
 		
+		# prepare to generate different shape
+		base = torch.ones((_num_anchors, 1))
+		h_seq = []
+		w_seq = []
+
+		# concatenate each anchor parameters (height and width) together
+		for scale in scales:
+			for ratio in ratios:
+				h_seq.append(
+					torch.round(torch.sqrt(torch.mul(base, scale * scale * ratio)))
+					)
+				w_seq.append(
+					torch.round(torch.sqrt(torch.mul(base, scale * scale / ratio)))
+					)
+		h_half = torch.round(torch.mul(torch.cat(h_seq, 0).reshape((-1, 1)), 0.5))
+		w_half = torch.round(torch.mul(torch.cat(w_seq, 0).reshape((-1, 1)), 0.5))
+
+		anchors = [
+			x_ctr - h_half,
+			y_ctr - w_half,
+			x_ctr + h_half,
+			y_ctr + w_half
+			]
+		anchors = torch.cat(anchors, 1).contiguous()
+
+		return anchors
 
 	def forward(self, x):
 		pass
