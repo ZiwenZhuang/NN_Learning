@@ -24,13 +24,16 @@ class RPN(nn.module):
 			scales: the width of anchor (when it is a square)                     |          |
 			ratios: under certain scale, the ratio between width and height       +-------x2, y2
 			---------------------------------
-			output: a tensor (H*W, 4) a series of anchor parameters, for the memory efficiency
+			output: a tensor (H*W/stride/stride, 4) a series of anchor parameters, for the memory efficiency
 		'''
-		_num_anchors = img.shape()[-2] * img.shape()[-1]
-		x_ctr, y_ctr = torch.meshgrid([img.shape()[2], img.shape()[3]])
+		_num_anchors = (img.shape()[-2] // stride) * (img.shape()[-1] // stride)
+		x_ctr, y_ctr = torch.meshgrid([img.shape()[2] // stride, img.shape()[3] // stride])
 		# keep the array into one dimension, (2 dimension in all)
 		x_ctr = x_ctr.reshape((-1, 1)).expand(_num_anchors * len(scales) * len(ratios), 1)
 		y_ctr = y_ctr.reshape((-1, 1)).expand(_num_anchors * len(scales) * len(ratios), 1)
+		# let the number be aligned to the pixel coordinates
+		x_ctr = torch.mul(x_ctr, stride) + (stride // 2)
+		y_ctr = torch.mul(y_ctr, stride) + (stride // 2)
 		
 		# prepare to generate different shape
 		base = torch.ones((_num_anchors, 1))
@@ -49,6 +52,7 @@ class RPN(nn.module):
 		h_half = torch.round(torch.mul(torch.cat(h_seq, 0).reshape((-1, 1)), 0.5))
 		w_half = torch.round(torch.mul(torch.cat(w_seq, 0).reshape((-1, 1)), 0.5))
 
+		# calculate the 2 pair of coordinates
 		anchors = [
 			x_ctr - h_half,
 			y_ctr - w_half,
