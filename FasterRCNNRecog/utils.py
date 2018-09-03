@@ -7,7 +7,7 @@ def set_trainable(model, require_grad = True):
 	for param in model.parameters():
 		param.requires_grad = require_grad
 
-def generate_anchor(img, stride = 16, scales = [128, 256, 512], ratios = [0.5, 1, 2]):
+def generate_anchor(img, stride = 1, scales = [128, 256, 512], ratios = [0.5, 1, 2]):
 	'''	Generating the 4 parameters (x1, y1, x2, y2) of each anchor.
 		And concatenate them along the 0-th dimension.
 		---------------------------------
