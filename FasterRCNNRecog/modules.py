@@ -1,5 +1,5 @@
 ﻿# Here it contains layers with activation function in it.
-# This entire file is from https://github.com/longcw/faster_rcnn_pytorch at 2018-09-03
+# This entire file is based on https://github.com/longcw/faster_rcnn_pytorch at 2018-09-03
 # The original file is callled network.py
 
 import torch
@@ -36,6 +36,38 @@ class FC(nn.Module):
         if self.relu is not None:
             x = self.relu(x)
         return x
+
+class ROIPool(nn.module):
+	''' This layer is not trainable. What makes it spacial is that it takes 2 input and generate
+	1 output, so that the backpropagation should goes for both of the inputs
+	'''
+	def __init__(self, out_size = (7, 7)):
+		super.__init__(self, ROIPool)
+		self.out_size = out_size
+
+	def forward(self, input, rois):
+		''' perform forwarding of ROI pooling
+			------------------------------------
+			inputs: it has 4-dimension (N, C, H, W) as the input feature map
+			rois: it has 3-dimension (N, A, 5) as the region of interest marked on the feature map
+				A is the number of regions proposed
+				5 means the 5 numbers of the coordinates (idx, x1, y1, x2, y2) where idx stands
+			for the channel index.
+			-----------------------------------
+			output: (N, C, out_size) 4-dimension, where each channel has its own region extracted
+		'''
+		assert inputs.shape()[0] == rois.shape()[0]
+		batch_size, num_channels, input_height, input_width = inputs.shape()
+		num_rois = rois.shape()[1]
+
+		overall_output = []
+		roi = roi.long() # make the data to int in order to use as coordinates
+		for map in input:
+			one_output = []
+			for 
+
+
+	def backward(self, grad_output):
 
 
 def save_net(fname, net):
