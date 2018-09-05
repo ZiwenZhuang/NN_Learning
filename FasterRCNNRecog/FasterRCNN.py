@@ -15,6 +15,9 @@ class RPN(nn.module):
 								"anchor_scales": [8, 16, 32], \
 								"anchor_ratios": [0.5, 1, 2], \
 								"lambda": 10, \
+								"nms_thresh": 0.7, \
+								"pre_nms_topN": 6000, \
+								"post_nms_topN": 300, \
 								}):
 		''' Using configs field to store all the configurations as well as hyper-parameters
 			"lambda": this is the hyper-parameter during calculating the loss
@@ -28,9 +31,9 @@ class RPN(nn.module):
 		# Considering the output of vgg is 512 channel, take the input of Conv layer as 512 channel
 		self.conv0 = Conv2d(512, 512, 3, same_padding=True)
 
-		num_anchors = len(self.configs["anchor_scales"]) * len(self.configs["anchor_ratios"])
-		self.score_conv = Conv2d(512, num_anchors * 2, 1, relu= False, same_padding= False) # using softmax later, so no ReLU
-		self.bbox_conv = Conv2d(512, num_anchors * 4, 1, relu= False, same_padding= False)
+		_num_anchors = len(self.configs["anchor_scales"]) * len(self.configs["anchor_ratios"])
+		self.score_conv = Conv2d(512, _num_anchors * 2, 1, relu= False, same_padding= False) # using softmax later, so no ReLU
+		self.bbox_conv = Conv2d(512, _num_anchors * 4, 1, relu= False, same_padding= False)
 
 		# Recording the loss
 		self.loss = None
@@ -49,7 +52,7 @@ class RPN(nn.module):
 		return self.bbox_conv(features)
 
 	def proposal_layer(self, rpn_conv, rpn_bbox):
-		''' For the simplicity, the implementation is moved to another file.
+		''' For the simplicity, the detail implementation is moved to another file.
 		'''
 		return utils.proposal_layer(rpn_conv, rpn_bbox)
 
