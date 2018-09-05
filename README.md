@@ -1,6 +1,7 @@
 # NN_Learning
 ## Idea
-* To learn existing neural network and put into practice on my own.
+* To learn existing neural network and put into practice on my own.  
+* Considering some of the network codes are too complicated to understand, I implemented them only to make them work, by not efficient enough
 
 ## Prerequisites
 The scripts are run using python3.6. It is not garanteed that other version of python is able to run these.
