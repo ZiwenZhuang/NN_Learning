@@ -60,3 +60,29 @@ def generate_anchor_TensorVersion(img_info, stride = 1, scales = [8, 16, 32], ra
 	anchors = torch.cat(anchors, 1).contiguous()
 
 	return anchors
+
+def box_IoU(box0, box1):
+	'''	Given two bounding boxes, the function returns the IoU of these two.
+		__________________
+		Input: two set of coordinates of the bounding boxes (x1, y1, x2, y2) for each box
+		------------------
+		Output: a number between 0 ~ 1
+		------------------
+		Requirements: You should ensure that x1 <= x2 and y1 <= y2
+			or there will be problems which are even undetectable.
+	'''
+	# Find the intersected area
+	inter_x1 = np.max(box0[0], box1[0])
+	inter_y1 = np.max(box0[1], box1[1])
+	inter_x2 = np.min(box0[2], box1[2])
+	inter_y2 = np.min(box0[3], box1[3])
+
+	# Calculate the intersection area
+	inter_area = np.abs(inter_x2 - inter_x1 + 1) * np.abs(inter_y2 - inter_y1 + 1)
+
+	# Calculate the area for each bounding boxes
+	b0_area = (box0[2] - box0[0]) * (box0[3] - box0[1] + 1)
+	b1_area = (box1[2] - box1[0]) * (box1[3] - box1[1] + 1)
+
+	# Calculate the IoU
+	return (inter_area) / (b0_area + b1_area - inter_area)

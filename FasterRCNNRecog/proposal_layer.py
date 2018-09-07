@@ -1,21 +1,24 @@
 ﻿# The file is used as part of the region proposal network, which makes the whole network two
-# parts :p
+# parts ;P
 # And the code is based on https://github.com/longcw/faster_rcnn_pytorch/blob/master/faster_rcnn/rpn_msr/proposal_layer.py
 # If you want to see the original code, please clone the whole repo for a closer view.
 
 import numpy as np
+from utils import box_IoU
+from bbox_transform import bbox_transform_inv
 
 def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1, 2]):
 	'''	Generating the 4 parameters (x1, y1, x2, y2) of each anchor.
 		And concatenate them along the 0-th dimension.
 		---------------------------------
-		img_info: the [height, width] of the image                         x1, y1--------+
+		img_info: the [height, width] of the image                         x1, y1--------+>
 		stride: the stride that the sliding window would move                 |          |
 		scales: the width of anchor (when it is a square)                     |          |
 		ratios: under certain scale, the ratio between width and height       +-------x2, y2
-		---------------------------------
-		output: a numpy matrix (1, H, W, _num_anchors*4) a series of anchor parameters.
-			along the last axis is like (x1, y1, x2, y2, x1, y1, x2, y2, ...)
+		---------------------------------                                     v
+		output: a numpy matrix (H * W * _num_anchors, 4) a series of anchor parameters.
+			along the last axis is like ([x1, y1, x2, y2],
+										 [x1, y1, x2, y2], ...)
 	'''
 	_num_anchors = (img_info[0] // stride) * (img_info[1] // stride)
 	x_ctr = np.arange(img_info[0] // stride)
@@ -51,7 +54,19 @@ def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1
 
 	# (1, H, W, _num_anchors*4)
 	anchors = np.transpose(anchors, axis=(0, 2, 3, 1))
+	# (H * W * _num_anchors, 4)
+	anchors = anchors.reshape((-1, 4))
 	return anchors
+
+def apply_delta(anchors, rpn_bbox):
+	'''	Considering the definition of bounding boxes, the application of predicted bbox delta
+		will be a little troublesome.
+		But the overall strategy is still the same (rpn_bbox represents the ratio from anchor 
+	parameters to the ground true bounding boxes.)
+	'''
+	# Still the predictions from the neural network are ratio to the anchors
+	pd_bbox = bbox_transform_inv(anchors, rpn_bbox)
+	return pd_bbox
 
 def clip_boxes(boxes, im_shape):
 	'''	Clip boxes to image boundaries
@@ -131,17 +146,17 @@ def proposal_layer(rpn_score, rpn_bbox, img_info, anchor_scales, anchor_ratios, 
 	#	Be sure to check the output of self.score_conv and self.bbox_conv for the output size!!!!
 	feature_shape = rpn_score.shape[1:3]
 	
-	# 0. get anchors in (1, H, W, _num_anchors*4) where only the last dimension is the anchor parameter
+	# 0. get anchors in (H * W * _num_anchors, 4) where only the last dimension is the anchor parameter
 	anchors = generate_anchor(rpn_bbox.shape[1:3], scales= anchor_scales, ratios= anchor_ratios)
 
-	# 1. apply delta (from bbox prediction) to each of the anchor
-	#	and reshape to (H * W * _num_anchors, 4)
-	pd_bbox = anchors + rpn_bbox
+	# 1. reshape the predicted bboxes and scores to (H * W * _num_anchors, 4)
+	# and apply delta (from bbox prediction) to each of the anchor
 	pd_bbox = pd_bbox.reshape((-1, 4))
 	    # the first set of channels are back_ground probs
 		# the second set are the fore_ground probs, which we want
 	pd_scores = rpn_score.reshape((-1, 2))[:, 2]
-	pd_scores = pd_scores.reshape(-1) # remove the 1-th dimension
+	pd_scores = pd_scores.reshape(-1) # remove the 0-th dimension
+	pd_bbox = apply_delta(anchors, rpn_bbox)
 
 	# 2. clip prediction bounding boxes to image size (using the size of the feature map here)
 	pd_bbox = clip_boxes(pd_bbox, feature_shape)
@@ -155,9 +170,13 @@ def proposal_layer(rpn_score, rpn_bbox, img_info, anchor_scales, anchor_ratios, 
 	# 5. take the pre_nms_topN number of proposals
 	order = pd_scores.ravel().argsort()[::-1]
 	if (configs["pre_nms_topN"] > 0):
-		order = order[configs["pre_nms_topN"], :]
+		order = order[:configs["pre_nms_topN"]]
 	pd_bbox = pd_bbox[order]
 	pd_scores = pd_scores[order]
 
 	# 6. perform NMS
-	keep = nms(np.hstack(pd_bbox, pd_scores), configs["nms_thresh"])
+	rois = np.hstack(pd_bbox, pd_scores)
+	keep = nms(rois, configs["nms_thresh"])
+	rois = rois[keep]
+
+	return rois
