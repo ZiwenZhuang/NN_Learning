@@ -64,25 +64,34 @@ def generate_anchor_TensorVersion(img_info, stride = 1, scales = [8, 16, 32], ra
 def box_IoU(box0, box1):
 	'''	Given two bounding boxes, the function returns the IoU of these two.
 		__________________
-		Input: two set of coordinates of the bounding boxes (x1, y1, x2, y2) for each box
+		Input: two batches of coordinates of the bounding boxes (x1, y1, x2, y2) for each box
+			where the size are either (N, 4) or (4,) or there will be trouble
 		------------------
-		Output: a number between 0 ~ 1
+		Output: a list of numbers between 0 ~ 1 even there are only one set of coordinates in
+			both box0 and box1
 		------------------
 		Requirements: You should ensure that x1 <= x2 and y1 <= y2
 			or there will be problems which are even undetectable.
 	'''
+	# Prepare to broadcasting any of the array, if needed
+	if box0.shape == (4,):
+		box0.reshape((-1, 4))
+	if box1.shape == (4,):
+		box1.reshape((-1, 4))
+	np.broadcast_arrays(box0, box1)
+
 	# Find the intersected area
-	inter_x1 = np.max(box0[0], box1[0])
-	inter_y1 = np.max(box0[1], box1[1])
-	inter_x2 = np.min(box0[2], box1[2])
-	inter_y2 = np.min(box0[3], box1[3])
+	inter_x1 = np.max(box0[:, 0], box1[:, 0])
+	inter_y1 = np.max(box0[:, 1], box1[:, 1])
+	inter_x2 = np.min(box0[:, 2], box1[:, 2])
+	inter_y2 = np.min(box0[:, 3], box1[:, 3])
 
 	# Calculate the intersection area
 	inter_area = np.abs(inter_x2 - inter_x1 + 1) * np.abs(inter_y2 - inter_y1 + 1)
 
 	# Calculate the area for each bounding boxes
-	b0_area = (box0[2] - box0[0]) * (box0[3] - box0[1] + 1)
-	b1_area = (box1[2] - box1[0]) * (box1[3] - box1[1] + 1)
+	b0_area = (box0[:, 2] - box0[:, 0]) * (box0[:, 3] - box0[:, 1] + 1)
+	b1_area = (box1[:, 2] - box1[:, 0]) * (box1[:, 3] - box1[:, 1] + 1)
 
 	# Calculate the IoU
 	return (inter_area) / (b0_area + b1_area - inter_area)

@@ -65,6 +65,7 @@ def apply_delta(anchors, rpn_bbox):
 	parameters to the ground true bounding boxes.)
 	'''
 	# Still the predictions from the neural network are ratio to the anchors
+	# But the predicted bounding box are notated in 2 pairs of coordinates at the corners.
 	pd_bbox = bbox_transform_inv(anchors, rpn_bbox)
 	return pd_bbox
 
@@ -112,9 +113,29 @@ def nms(predictions, thresh):
 		----------
 		numpy 1darray served as indexes of proposals (along the 0-th axis)
 	'''
+	# Considering the input predictions are all sorted by score, the algorithm will be elminate
+	# all the indexes that has the IoU greater than threshold (from start)
+	
+	left = np.arange(predictions.shape[0])
+	keep = []
+	while len(left) > 0:
+		# Considering the predictions are sorted, we add the first element into the output
+		add = left[0]
+		keep.append(add)
+
+		# remove all bounding boxes' index whose IoU with the added bounding box is greater
+		# than the threshold.
+		IoUs = box_IoU(predictions[keep], predictions)
+		to_remove = np.where(IoUs > 0.7)
+
+		# remove those bounding boxes by index in the 'left'
+		np.delete(left, add)
+		np.delete(left, to_remove)
+	
+	return keep
 
 
-def proposal_layer(rpn_score, rpn_bbox, img_info, anchor_scales, anchor_ratios, configs):
+def proposal_layer(rpn_score, rpn_bbox, configs):
 	'''	Extract useful proposals that are both high in score and big in area.
 		---------------------
 		Parameters
@@ -123,10 +144,10 @@ def proposal_layer(rpn_score, rpn_bbox, img_info, anchor_scales, anchor_ratios, 
 		rpn_bbox: the network predicted slight shift for the "ground true" bounding box relative to
 			the anchor at the specific point. (1, H, W, A*4) 4-dimensions
 			where A is the number of anchors for each point (in the feature map)
-		img_info: the [height, width] of the input image (I means the input image of the whole network)
 		anchor_scales: the anchor size if put onto the input images
 		anchor_ratios: the ratio between the height and the width of the anchor
-		configs: requires (nms_thresh, pre_nms_topN, post_nms_topN) keys as configuration
+		configs: requires (rpn_min_size, rpn_max_ratio, nms_thresh, pre_nms_topN, post_nms_topN)
+			keys as configuration
 		----------------------
 		Returns
 		----------
@@ -147,7 +168,8 @@ def proposal_layer(rpn_score, rpn_bbox, img_info, anchor_scales, anchor_ratios, 
 	feature_shape = rpn_score.shape[1:3]
 	
 	# 0. get anchors in (H * W * _num_anchors, 4) where only the last dimension is the anchor parameter
-	anchors = generate_anchor(rpn_bbox.shape[1:3], scales= anchor_scales, ratios= anchor_ratios)
+	anchors = generate_anchor(feature_shape, \
+		scales= configs["anchor_scales"], ratios= configs["anchor_ratios"])
 
 	# 1. reshape the predicted bboxes and scores to (H * W * _num_anchors, 4)
 	# and apply delta (from bbox prediction) to each of the anchor
@@ -155,14 +177,13 @@ def proposal_layer(rpn_score, rpn_bbox, img_info, anchor_scales, anchor_ratios, 
 	    # the first set of channels are back_ground probs
 		# the second set are the fore_ground probs, which we want
 	pd_scores = rpn_score.reshape((-1, 2))[:, 2]
-	pd_scores = pd_scores.reshape(-1) # remove the 0-th dimension
 	pd_bbox = apply_delta(anchors, rpn_bbox)
 
 	# 2. clip prediction bounding boxes to image size (using the size of the feature map here)
 	pd_bbox = clip_boxes(pd_bbox, feature_shape)
 
 	# 3. get rid of anchors with too small size or too strange height/width ratio
-	keep = _filter_boxes(pd_bbox, img_info, feature_shape)
+	keep = _filter_boxes(pd_bbox, configs["rpn_min_size"], configs["rpn_max_ratio"])
 	pd_bbox = pd_bbox[keep]
 	pd_scores = pd_scores[keep]
 

@@ -7,6 +7,7 @@ import torchvision.models as models
 
 from modules import Conv2d, FC, ROIPool
 import utils
+from proposal_layer import proposal_layer as proposal_py
 
 class RPN(nn.module):
 	''' Region Proposal Network as a component of the Faster-rcnn net
@@ -15,6 +16,8 @@ class RPN(nn.module):
 								"anchor_scales": [8, 16, 32], \
 								"anchor_ratios": [0.5, 1, 2], \
 								"lambda": 10, \
+								"rpn_min_size": 16,\
+								"rpn_max_ratio": 3, \
 								"nms_thresh": 0.7, \
 								"pre_nms_topN": 6000, \
 								"post_nms_topN": 300, \
@@ -54,7 +57,8 @@ class RPN(nn.module):
 	def proposal_layer(self, rpn_conv, rpn_bbox):
 		''' For the simplicity, the detail implementation is moved to another file.
 		'''
-		return utils.proposal_layer(rpn_conv, rpn_bbox)
+
+		return proposal_py(rpn_conv, rpn_bbox)
 
 	def forward(self, x):
 		assert isinstance(x, torch.Tensor) | isinstance(x, torch.Variable)
