@@ -18,3 +18,4 @@ It seems that running on CPU is ok for all the faster-rcnn process...
 2. The code is based on [this](https://github.com/longcw/faster_rcnn_pytorch)
 3. The vgg16 architecture is as follows  
 	![vgg_configuration](https://www.pyimagesearch.com/wp-content/uploads/2017/03/imagenet_vggnet_table1.png)
+4. The NMS in the region proposal network is implemented based on [this](https://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/)  
