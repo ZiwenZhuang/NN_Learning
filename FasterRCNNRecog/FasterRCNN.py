@@ -54,13 +54,17 @@ class RPN(nn.module):
 		'''
 		return self.bbox_conv(features)
 
-	def proposal_layer(self, rpn_conv, rpn_bbox):
+	def proposal_layer(self, rpn_prob, rpn_bbox_pred):
 		''' For the simplicity, the detail implementation is moved to another file.
 		'''
+		rpn_prob = rpn_prob.data.cpu().numpy()
+		rpn_bbox_pred = rpn_bbox_pred.data.cpu().numpy()
+		output = proposal_py(np.transpose(rpn_prob, (0, 2, 3, 1)), \
+			np.transpose(rpn_bbox_pred, (0, 2, 3, 1)), \
+			self.configs)
+		return torch.from_numpy(output)
 
-		return proposal_py(rpn_conv, rpn_bbox)
-
-	def forward(self, x):
+	def forward(self, x, gt_boxes= None):
 		assert isinstance(x, torch.Tensor) | isinstance(x, torch.Variable)
 		# one output item: feature map
 		features = self.feature_net(x)
@@ -74,11 +78,12 @@ class RPN(nn.module):
 		# for each pixel in the feature map.
 
 		# another output item: roi using the proposal layer
-		rois = self.proposal_layer(...)
+		rois = self.proposal_layer(rpn_prob, rpn_bbox_pred)
 
 		# check if in the training mode to build loss
 		if self.training:
-			...
+			assert not gt_boxes is None
+
 
 		return features, rois
 

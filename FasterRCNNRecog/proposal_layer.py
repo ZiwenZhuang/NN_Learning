@@ -107,7 +107,7 @@ def nms(predictions, thresh):
 		---------------------
 		Parameters
 		----------
-		predictions: numpy 2darray (N, 5), along the second axies (x1, y1, x2, y2, score)
+		predictions: numpy 2darray (N, 5), along the 1-th axies (x1, y1, x2, y2, score)
 		---------------------
 		Returns
 		----------
@@ -125,15 +125,14 @@ def nms(predictions, thresh):
 
 		# remove all bounding boxes' index whose IoU with the added bounding box is greater
 		# than the threshold.
-		IoUs = box_IoU(predictions[keep], predictions)
-		to_remove = np.where(IoUs > 0.7)
+		IoUs = box_IoU(predictions[left][:4], predictions[add][:4])
+		to_remove = np.where(IoUs > thresh)
 
 		# remove those bounding boxes by index in the 'left'
-		np.delete(left, add)
+		np.delete(left, [0])
 		np.delete(left, to_remove)
 	
 	return keep
-
 
 def proposal_layer(rpn_score, rpn_bbox, configs):
 	'''	Extract useful proposals that are both high in score and big in area.
@@ -152,8 +151,9 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 		Returns
 		----------
 		rpn_rois: a batch of bunch of rois that are elected from the network proposals.
-			(1, H * W * A, 5) where H and W are the size of input feature map (rpn_score, rpn_bbox)
+			(1, H * W * A, 5) where H and W are the size of input feature map (rpn_bbox, rpn_score)
 			and A is the number of anchors for each point in the feature map
+			And the parameters along the 1-th axis is (x1, y1, x2, y2, score)
 	'''
 	#	Considering the output proposal for each image is different, you should provide batch with
 	# only 1 item, or it is difficult for this method to return the same amount of proposals for
