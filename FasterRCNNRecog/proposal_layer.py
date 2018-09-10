@@ -226,3 +226,5 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 			each bounding box, which is the result from x to t transform (according to
 			the paper)
 	'''
+	assert rpn_cls_score.shape[0] == 1, \
+		"Only support batch with size 1"
