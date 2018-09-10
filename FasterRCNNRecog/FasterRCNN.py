@@ -48,6 +48,7 @@ class RPN(nn.module):
 		score = self.score_conv(features)
 		# Considering Softmax is not a learnable layer, we don't need to "see" it later.
 		return nn.Softmax(1)(score)
+		# The output here is (N, A*2, H, W). Along the 1-th axis, the scores are (bg, fg, bg, fg, ...)
 
 	def rpn_bbox(self, features):
 		''' Proposing bounding boxes for selecting the proposals.
@@ -63,6 +64,12 @@ class RPN(nn.module):
 			np.transpose(rpn_bbox_pred, (0, 2, 3, 1)), \
 			self.configs)
 		return torch.from_numpy(output)
+
+	def anchor_targets_layer(self, rpn_prob, gt_boxes):
+		''' For the simpliciry, the datail implementation is moved to the proposal_layer file.
+		'''
+
+
 
 	def forward(self, x, gt_boxes= None):
 		assert isinstance(x, torch.Tensor) | isinstance(x, torch.Variable)

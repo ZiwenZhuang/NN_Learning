@@ -176,7 +176,7 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 	pd_bbox = pd_bbox.reshape((-1, 4))
 	    # the first set of channels are back_ground probs
 		# the second set are the fore_ground probs, which we want
-	pd_scores = rpn_score.reshape((-1, 2))[:, 2]
+	pd_scores = rpn_score.reshape((-1, 2))[:, 1]
 	pd_bbox = apply_delta(anchors, rpn_bbox)
 
 	# 2. clip prediction bounding boxes to image size (using the size of the feature map here)
@@ -201,3 +201,28 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 	rois = rois[keep]
 
 	return rois
+
+def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
+	'''	This method generates targets for the entire region proposal network.
+		From the annotated labels (ground truth bounding boxes), assign anchors
+	ground-targets, and produce anchor classifications (foreground/background)
+	as well as bounding boxes regression targets.
+		---------------------
+		Inputs:
+		--------
+		rpn_cls_score: the output from rpn_score layer, which contains the feature
+			map size. It has to be transposed to (1, H, W, A*2) 4-dimension numpy array.
+		gt_bbox: (N, 4) 2-dimension numpy array. The annotated ground-truth bounding boxes.
+		configs: configurations from the RPN network module, which must contains
+			the following fields: "anchor_scales", "anchor_ratios"
+		--------------------
+		Returns:
+		--------
+		rpn_labels: (H*W*A, 1) 2-dimension numpy array, where the order cooresponding
+			to the anchors are based on the 'generate_anchor' function, which doesn't
+			requires further concern. Along the 1-th axis, 1 denotes foreground, 0 denotes
+			background, -1 denotes dont care.
+		rpn_bbox_targets: (H*W*A, 4) 2-dimension numpy array, The target predictions for
+			each bounding box, which is the result from x to t transform (according to
+			the paper)
+	'''
