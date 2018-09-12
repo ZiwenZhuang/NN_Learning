@@ -228,3 +228,8 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	'''
 	assert rpn_cls_score.shape[0] == 1, \
 		"Only support batch with size 1"
+
+	feature_shape = rpn_cls_score.shape[1:3]
+	anchors = generate_anchor(feature_shape, scales= configs["anchor_scales"], ratios= configs["anchor_ratios"])
+
+	
