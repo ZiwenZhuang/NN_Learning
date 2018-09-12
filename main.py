@@ -27,16 +27,17 @@ def LeNetDemo():
 
 def test_torch_COCOapi():
 	from pycocotools.coco import COCO
-	# The code is copied from https://pytorch.org/docs/stable/torchvision/datasets.html#coco
-	cap = dset.CocoCaptions(root = config.COCOData["train_img"],
-							annFile = config.COCOData["train_captions"],
-							transform=transforms.ToTensor())
+	# The code is based on https://pytorch.org/docs/stable/torchvision/datasets.html#coco
+	detections = dset.CocoDetection(root = config.COCOData["train_img"],
+									annFile = config.COCOData["train_instances"],
+									transform = transforms.ToTensor())
 
-	print('Number of samples: ', len(cap))
-	img, target = cap[3] # load 4th sample
+	print('Number of samples: ', len(detections))
+	img, target = detections[3] # load 4th sample
 
 	print("Image Size: ", img.size())
-	print(target)
+	print(target[2].keys())
+
 
 if __name__ == "__main__":
 	test_torch_COCOapi()
