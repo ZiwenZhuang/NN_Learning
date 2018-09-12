@@ -203,7 +203,8 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 	return rois
 
 def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
-	'''	This method generates targets for the entire region proposal network.
+	'''	This method generates targets for the entire region proposal network,
+	which is not a differentiable neural network layer, just a part of the network.
 		From the annotated labels (ground truth bounding boxes), assign anchors
 	ground-targets, and produce anchor classifications (foreground/background)
 	as well as bounding boxes regression targets.
@@ -232,4 +233,3 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	feature_shape = rpn_cls_score.shape[1:3]
 	anchors = generate_anchor(feature_shape, scales= configs["anchor_scales"], ratios= configs["anchor_ratios"])
 
-	
