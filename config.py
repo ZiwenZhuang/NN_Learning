@@ -11,8 +11,13 @@ MnistData = {
     }
 
 COCOData = {
-	"train_img": Data_Path + "COCO2014",
-	"train_target": Data_Path + "COCO2014",
-	"test_img": Data_Path + "COCO2014",
-	"test_target": Data_Path + "COCO2014"
+	"train_img": Data_Path + "COCO2014/train2014/",
+	"test_img": Data_Path + "COCO2014/val2014/",
+	"annotations": Data_Path + "COCO2014/annotations/",
 	}
+COCOData.update({
+	"train_captions": COCOData["annotations"] + "captions_train2014.json",
+	"test_captions": COCOData["annotations"] + "captions_val2014.json",
+	"train_instances": COCOData["annotations"] + "instances_train2014.json",
+	"test_instances": COCOData["annotations"] + "instances_val2014.json",
+	})

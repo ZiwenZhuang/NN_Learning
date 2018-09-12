@@ -8,6 +8,9 @@ import numpy as np
 import LeNetRecog.binHandler as binHandler
 import LeNetRecog.LeNet as LeNet
 
+import torchvision.datasets as dset
+import torchvision.transforms as transforms
+
 def test_LeNet_utils():
     imgs = torch.from_numpy(binHandler.all_img(config.MnistData["train_img"])).float()
     labels = binHandler.all_label(config.MnistData["train_label"])
@@ -22,6 +25,19 @@ def LeNetDemo():
 	#trained_net = LeNet.train(config.MnistData)
 	LeNet.test(config.MnistData, filepath = "./LeNetRecog/LeNet_learnt.pth")
 
-if __name__ == "__main__":
+def test_torch_COCOapi():
+	from pycocotools.coco import COCO
+	# The code is copied from https://pytorch.org/docs/stable/torchvision/datasets.html#coco
+	cap = dset.CocoCaptions(root = config.COCOData["train_img"],
+							annFile = config.COCOData["train_captions"],
+							transform=transforms.ToTensor())
 
+	print('Number of samples: ', len(cap))
+	img, target = cap[3] # load 4th sample
+
+	print("Image Size: ", img.size())
+	print(target)
+
+if __name__ == "__main__":
+	test_torch_COCOapi()
 	pass
