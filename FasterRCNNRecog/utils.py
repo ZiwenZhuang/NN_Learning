@@ -112,4 +112,13 @@ def cal_overlaps(anchors, gt_bboxes):
 			and each ground truth bounding box. And the order is still the same as
 			the input sequence.
 	'''
-	
+	output = []
+
+	# for each ground truth bounding box, calculate all the IoU with all the N anchors
+	for i in range(gt_bboxes.shape[0]):
+		a_column = box_IoU(anchors, gt_bboxes[i])
+		output.append(a_column)
+
+	# put all the IoUs into a single matrix
+	return np.ascontiguousaray(numpy.concatenate(output, axis=1))
+

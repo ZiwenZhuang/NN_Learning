@@ -5,7 +5,7 @@
 
 import numpy as np
 from utils import box_IoU, cal_overlaps
-from bbox_transform import bbox_transform_inv
+from bbox_transform import bbox_transform_inv, bbox_transform
 
 def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1, 2]):
 	'''	Generating the 4 parameters (x1, y1, x2, y2) of each anchor.
@@ -219,7 +219,7 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 		--------------------
 		Returns:
 		--------
-		rpn_labels: (H*W*A, 1) 2-dimension numpy array, where the order cooresponding
+		rpn_labels: (H*W*A,) 1-dimension numpy array, where the order cooresponding
 			to the anchors are based on the 'generate_anchor' function, which doesn't
 			requires further concern. Along the 1-th axis, 1 denotes foreground, 0 denotes
 			background, -1 denotes dont care.
@@ -234,4 +234,22 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	anchors = generate_anchor(feature_shape, scales= configs["anchor_scales"], ratios= configs["anchor_ratios"])
 
 	# calculate overlaps between each anchor and each gt_bbox
-	overlaps = cal_overlaps()
+	overlaps = cal_overlaps(anchors, gt_bbox)
+
+	# find out the greatest IoU between each anchor and the gt_bbox
+	max_IoU_ind = overlaps.argmax(axis = 1)
+	max_IoU = overlaps.amax(axis = 1)
+
+	# one of the output (rpn_labels)
+	rpn_labels = numpy.ones((anchors.shape[0],)) * -1
+	rpn_labels[max_IoU > configs["IoU_high_thresh"]] = 1
+	rpn_labels[max_IoU < configs["IoU_low_thresh"]] = 0
+
+	# another output (rpn_bbox_targets)
+	# (1) assign the gt_bbox with the greatest IoU for each anchors
+	target_bboxes = [gt_bbox[i] for i in max_IoU_ind]
+	target_bboxes = np.concatenate(target_bboxes, axis= 1).transpose()
+	# (2) get the target predictions
+	rpn_bbox_targets = bbox_transform(anchors, target_bboxes)
+
+	return rpn_labels, rpn_bbox_targets

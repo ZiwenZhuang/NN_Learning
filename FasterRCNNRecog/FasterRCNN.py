@@ -8,6 +8,7 @@ import torchvision.models as models
 from modules import Conv2d, FC, ROIPool
 import utils
 from proposal_layer import proposal_layer as proposal_py
+from proposal_layer import anchor_targets_layer as anchor_targets_py
 
 class RPN(nn.module):
 	''' Region Proposal Network as a component of the Faster-rcnn net
@@ -21,6 +22,8 @@ class RPN(nn.module):
 								"nms_thresh": 0.7, \
 								"pre_nms_topN": 6000, \
 								"post_nms_topN": 300, \
+								"IoU_high_thresh": 0.7, \
+								"IoU_low_thresh": 0.3, \
 								}):
 		''' Using configs field to store all the configurations as well as hyper-parameters
 			"lambda": this is the hyper-parameter during calculating the loss
@@ -68,7 +71,12 @@ class RPN(nn.module):
 	def anchor_targets_layer(self, rpn_prob, gt_boxes):
 		''' For the simpliciry, the datail implementation is moved to the proposal_layer file.
 		'''
-		
+		rpn_prob = rpn_prob.data.cpu().numpy()
+		if isinstance(gt_boxes, nn.Tensor):
+			gt_boxes = gt_boxes.data.cpu().numpy()
+		labels, bbox_targets = anchor_targets_py(np.transpose(rpn_prob, (0, 2, 3, 1)), \
+									gt_boxes, self.configs)
+		return torch.from_numpy(labels), torch.from_numpy(bbox_targets)
 
 
 	def forward(self, x, gt_boxes= None):
@@ -90,7 +98,8 @@ class RPN(nn.module):
 		# check if in the training mode to build loss
 		if self.training:
 			assert not gt_boxes is None
-
+			self.anchor_targets_layer(rpn_prob, gt_boxes)
+			
 
 		return features, rois
 
