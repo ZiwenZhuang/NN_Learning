@@ -95,3 +95,21 @@ def box_IoU(box0, box1):
 
 	# Calculate the IoU
 	return (inter_area) / (b0_area + b1_area - inter_area)
+
+def cal_overlaps(anchors, gt_bboxes):
+	'''	Calcualte IoU between each anchor and each ground truth bounding box.
+		-----------------------
+		Parameters:
+		-----------
+		anchors: a (N, 4) numpy array, which denotes the coordinates of the anchors,
+			in the form of ([x1, y1, x2, y2], [x1, y1, x2, y2], ...)
+		gt_bboxes: a (G, 4) numpy array, which denots the coordinates of the ground
+			truth bounding boxes, in the form of ([x1, y1, x2, y2], [x1, y1, x2, y2], ...)
+		-----------------------
+		Returns:
+		--------
+		overlaps: a (N, G) numpy array, which denotes the IoU between each anchor 
+			and each ground truth bounding box. And the order is still the same as
+			the input sequence.
+	'''
+	

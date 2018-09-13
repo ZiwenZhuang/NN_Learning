@@ -4,7 +4,7 @@
 # If you want to see the original code, please clone the whole repo for a closer view.
 
 import numpy as np
-from utils import box_IoU
+from utils import box_IoU, cal_overlaps
 from bbox_transform import bbox_transform_inv
 
 def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1, 2]):
@@ -233,3 +233,5 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	feature_shape = rpn_cls_score.shape[1:3]
 	anchors = generate_anchor(feature_shape, scales= configs["anchor_scales"], ratios= configs["anchor_ratios"])
 
+	# calculate overlaps between each anchor and each gt_bbox
+	overlaps = cal_overlaps()

@@ -68,7 +68,7 @@ class RPN(nn.module):
 	def anchor_targets_layer(self, rpn_prob, gt_boxes):
 		''' For the simpliciry, the datail implementation is moved to the proposal_layer file.
 		'''
-
+		
 
 
 	def forward(self, x, gt_boxes= None):
