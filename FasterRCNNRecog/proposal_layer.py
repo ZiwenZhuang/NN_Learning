@@ -158,7 +158,7 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 	#	Considering the output proposal for each image is different, you should provide batch with
 	# only 1 item, or it is difficult for this method to return the same amount of proposals for
 	# the whole batch.
-	assert rpn_score.shape[0] == 1 & rpn_rpn_bbox.shape[0] == 1, \
+	assert rpn_score.shape[0] == 1 & rpn_bbox.shape[0] == 1, \
 		"Only single item batches are supported"
 
 	#	Considering the output from feature map (The first step in RPN network) has the same size
@@ -173,7 +173,7 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 
 	# 1. reshape the predicted bboxes and scores to (H * W * _num_anchors, 4)
 	# and apply delta (from bbox prediction) to each of the anchor
-	pd_bbox = pd_bbox.reshape((-1, 4))
+	pd_bbox = rpn_bbox.reshape((-1, 4))
 	    # the first set of channels are back_ground probs
 		# the second set are the fore_ground probs, which we want
 	pd_scores = rpn_score.reshape((-1, 2))[:, 1]
@@ -200,7 +200,7 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 	keep = nms(rois, configs["nms_thresh"])
 	rois = rois[keep]
 
-	return rois
+	return numpy.expand_dims(rois, 0)
 
 def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	'''	This method generates targets for the entire region proposal network,

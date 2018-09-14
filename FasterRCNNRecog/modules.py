@@ -69,7 +69,8 @@ class ROIPool(nn.module):
 
 	def backward(self, grad_output):
 
-
+#############################################################
+# the following code are not being used.
 def save_net(fname, net):
     import h5py
     h5f = h5py.File(fname, mode='w')

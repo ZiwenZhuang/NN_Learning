@@ -24,6 +24,7 @@ class RPN(nn.module):
 								"post_nms_topN": 300, \
 								"IoU_high_thresh": 0.7, \
 								"IoU_low_thresh": 0.3, \
+								"loss_lambda": 10, \
 								}):
 		''' Using configs field to store all the configurations as well as hyper-parameters
 			"lambda": this is the hyper-parameter during calculating the loss
@@ -98,21 +99,25 @@ class RPN(nn.module):
 		# check if in the training mode to build loss
 		if self.training:
 			assert not gt_boxes is None
-			self.anchor_targets_layer(rpn_prob, gt_boxes)
-			
+			rpn_labels, rpn_bbox_targets = self.anchor_targets_layer(rpn_prob, gt_boxes)
+			loss = self.build_loss(rpn_prob, rpn_bbox_pred,\
+									rpn_labels, rpn_bbox_targets)
 
 		return features, rois
 
-	def build_loss(self):
+	def build_loss(self, prob, bbox_pred, labels, bbox_targets):
 		''' This method is model specific, and the interface is designed only for the internal
 		method.
+			It stores the loss directly to the self.loss and also returns
 		'''
-		pass
+		smooth_loss = nn.SmoothL1Loss()
+		cls_loss = smooth_loss(prob[labels != -1], labels[labels != -1])
 
-	def train(self):
-		''' You should call this method to train the network.
-		'''
-		pass
+		box_loss = smooth_loss(bbox_pred[labels == 1], bbox_targets[labels == 1])
+		box_loss = box_loss.sum() # based on page 3 at 'fast rcnn' paper
+
+		self.loss = cls_loss + configs["lambda"] * box_loss
+		return self.loss
 
 class FasterRCNN(nn.module):
 	def __init__(self):
@@ -126,3 +131,13 @@ class FasterRCNN(nn.module):
 
 
 		pass
+
+def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
+	'''	By training the network, it will print the traing epoch, and returns the learnt network
+	which was set to testing mode (.training = False). It will save the entire network data to
+	given file (override) as well.
+	'''
+	# 1. configuring the data
+	#	read files and setup the targets
+
+	pass
