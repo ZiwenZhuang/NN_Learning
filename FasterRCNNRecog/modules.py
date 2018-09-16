@@ -51,11 +51,11 @@ class ROIPool(nn.module):
 		''' perform forwarding of ROI pooling (For each channel)
 			------------------------------------
 			img: it has 4-dimension (C, H, W) as the img feature map
-			rois: it has 3-dimension (A, 4) as the region of interest marked on the feature map
+			rois: it has 3-dimension (G, 4) as the region of interest marked on the feature map
 				A is the number of regions proposed
 				4 means the 4 numbers of the coordinates (x1, y1, x2, y2)
 			-----------------------------------
-			output: (A, C, out_size) 4-dimension, where each channel has its own region extracted
+			output: (G, C, out_size) 4-dimension, where each channel has its own region extracted
 		'''
         # For the simplicity, this layer does not process a batch. It pools in one image each.
 		num_channels, img_height, img_width = img.shape()

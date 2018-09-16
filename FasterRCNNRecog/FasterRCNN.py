@@ -120,15 +120,38 @@ class RPN(nn.module):
 		return self.loss
 
 class FasterRCNN(nn.module):
-	def __init__(self):
+	def __init__(self, classes = None):
 		super.__init__(self, FasterRCNN)
+		if classes is not None:
+			self.classes = classes
+			self.num_classes = len(classes)
+
 		self.rpn = RPN() # The whole region proposal layer
 		self.roi_pooling = ROIPool() # ROI pooling layer
+		self.fcs = nn.Sequential([
+				FC(512*7*7, 4096),\
+				nn.Dropout(),\
+				FC(4096, 4096),\
+				nn.Dropout(),\
+			])
+		self.score_fc = nn.Sequential([
+				FC(4096, self.num_classes, relu= False),\
+				nn.Softmax()
+			])
+		self.bbox_fc = FC(4096, self.num_classes * 4, relu= False)
 
 	def forward(self, x):
 		# input x has to be (N, C, H, W) image batch
 		features, rois = self.rpn_layer(x)
+		# Now pooled is a (G, C, feature_size) 4-dimension tensor
+		pooled = self.roi_pooling(features[0], rois[0])
 
+
+		pass
+
+	def build_loss(self):
+		'''	 to be decided....
+		'''
 
 		pass
 

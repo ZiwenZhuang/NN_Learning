@@ -253,3 +253,6 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	rpn_bbox_targets = bbox_transform(anchors, target_bboxes)
 
 	return rpn_labels, rpn_bbox_targets
+
+def proposal_targets():
+	

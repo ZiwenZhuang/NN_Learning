@@ -36,7 +36,8 @@ def test_torch_COCOapi():
 	img, target = detections[3] # load 4th sample
 
 	print("Image Size: ", img.size())
-	print(target[2].keys())
+	print("Annotation keys: ", target[2].keys())
+	print()
 
 
 if __name__ == "__main__":
