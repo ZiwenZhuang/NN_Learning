@@ -5,7 +5,7 @@ import torch.nn as nn
 import torchvision.datasets as datasets
 import torchvision.models as models
 
-from modules import Conv2d, FC, ROIPool
+from modules import Conv2d, FC, ROIPool, VGG16
 import utils
 from proposal_layer import proposal_layer as proposal_py
 from proposal_layer import anchor_targets_layer as anchor_targets_py
@@ -33,7 +33,7 @@ class RPN(nn.module):
 		self.configs = configs
 
 		# The covnets that outputs the feature map
-		self.feature_net = models.vgg16()
+		self.feature_net = modules.VGG16()
 
 		# Considering the output of vgg is 512 channel, take the input of Conv layer as 512 channel
 		self.conv0 = Conv2d(512, 512, 3, same_padding=True)
