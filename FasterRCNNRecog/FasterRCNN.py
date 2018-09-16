@@ -139,5 +139,5 @@ def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 	'''
 	# 1. configuring the data
 	#	read files and setup the targets
-
+	
 	pass

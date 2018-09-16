@@ -151,9 +151,9 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 		Returns
 		----------
 		rpn_rois: a batch of bunch of rois that are elected from the network proposals.
-			(1, H * W * A, 5) where H and W are the size of input feature map (rpn_bbox, rpn_score)
+			(1, H * W * A, 4) where H and W are the size of input feature map (rpn_bbox, rpn_score)
 			and A is the number of anchors for each point in the feature map
-			And the parameters along the 1-th axis is (x1, y1, x2, y2, score)
+			And the parameters along the 1-th axis is (x1, y1, x2, y2)
 	'''
 	#	Considering the output proposal for each image is different, you should provide batch with
 	# only 1 item, or it is difficult for this method to return the same amount of proposals for

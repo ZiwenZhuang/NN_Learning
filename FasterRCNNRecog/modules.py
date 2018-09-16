@@ -38,36 +38,44 @@ class FC(nn.Module):
         return x
 
 class ROIPool(nn.module):
-	''' This layer is not trainable. What makes it spacial is that it takes 2 input and generate
-	1 output, so that the backpropagation should goes for both of the inputs
+	''' This layer is not trainable. 
+        And according the code that I referred to, this layer in Faster R-CNN did not implemented
+    the backpropagation method. In which case, I don't think it actually need backpropagation.
 	'''
 	def __init__(self, out_size = (7, 7)):
 		super.__init__(self, ROIPool)
 		self.out_size = out_size
+        self.pool = nn.AdaptiveAvgPool2d(self.out_size)
 
-	def forward(self, input, rois):
-		''' perform forwarding of ROI pooling
+	def forward(self, img, rois):
+		''' perform forwarding of ROI pooling (For each channel)
 			------------------------------------
-			inputs: it has 4-dimension (N, C, H, W) as the input feature map
-			rois: it has 3-dimension (N, A, 5) as the region of interest marked on the feature map
+			img: it has 4-dimension (C, H, W) as the img feature map
+			rois: it has 3-dimension (A, 4) as the region of interest marked on the feature map
 				A is the number of regions proposed
-				5 means the 5 numbers of the coordinates (idx, x1, y1, x2, y2) where idx stands
-			for the channel index.
+				4 means the 4 numbers of the coordinates (x1, y1, x2, y2)
 			-----------------------------------
-			output: (N, C, out_size) 4-dimension, where each channel has its own region extracted
+			output: (A, C, out_size) 4-dimension, where each channel has its own region extracted
 		'''
-		assert inputs.shape()[0] == rois.shape()[0]
-		batch_size, num_channels, input_height, input_width = inputs.shape()
-		num_rois = rois.shape()[1]
+        # For the simplicity, this layer does not process a batch. It pools in one image each.
+		num_channels, img_height, img_width = img.shape()
+		num_rois = rois.shape()[0]
 
 		overall_output = []
-		roi = roi.long() # make the data to int in order to use as coordinates
-		for map in input:
-			one_output = []
-			for 
+		rois = rois.long() # make the data to int in order to use as coordinates
+		for roi in rois:
+            x1 = roi[0]
+            y1 = roi[1]
+            x2 = roi[2]
+            y2 = roi[3]
+			all_channel = []
+			for chan in img:
+                one_img = chan[x1:x2, y1:y2]
+                all_channel.append(self.pool(one_img).unsqueeze(0))
+            overall_output.append(torch.cat(all_channel, dim = 0).unsqueeze(0))
+        overall_output = torch.cat(overall_output, dim = 0)
 
-
-	def backward(self, grad_output):
+        return overall_output
 
 #############################################################
 # the following code are not being used.
