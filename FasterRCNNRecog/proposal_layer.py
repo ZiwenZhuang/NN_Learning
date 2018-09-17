@@ -260,5 +260,24 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 
 	return rpn_labels, rpn_bbox_targets
 
-def proposal_targets():
+def proposal_targets(pd_rois, gt_bbox, img2feat_ratio):
+	'''	Assign ground truth bounding boxes to the roi proposals in terms of the feature map.
+		----------------
+		Inputs:
+		-------
+		pd_rois: (1, G, 4) numpy 3d array, produced directly from the RPN network. It is not needed
+			for simplicity.
+		gt_bbox: (N, 4) numpy 2d array, along whose 1-th axis is [x1, y1, x2, y2] and be sure to
+			check the coordinate system in terms of the image.
+		img2feat_ratio: the rate between the input image to the entire network and the feature
+			map output from the RPN network.
+		----------------
+		Outputs:
+		-------
+		rois: (1, N, 4) numpy 3d array the target roi in the scale of feature map.
+	'''
+	# I'm lazy for now, so I won't filter out the hard targets or jitter the bounding boxes.
+	rois = gt_bbox / img2feat_ratio
+
+	return rois
 	

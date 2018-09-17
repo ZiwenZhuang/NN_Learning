@@ -9,6 +9,7 @@ from modules import Conv2d, FC, ROIPool, VGG16
 import utils
 from proposal_layer import proposal_layer as proposal_py
 from proposal_layer import anchor_targets_layer as anchor_targets_py
+from proposal_layer import proposal_targets as proposal_targets_py
 
 class RPN(nn.module):
 	''' Region Proposal Network as a component of the Faster-rcnn net
@@ -149,18 +150,37 @@ class FasterRCNN(nn.module):
 			])
 		self.bbox_fc = FC(4096, self.num_classes * 4, relu= False)
 
-	def forward(self, x):
+	def forward(self, x, gt_bbox=None, gt_labels=None):
+		'''	Inputs:
+			-------
+			x: the input image (N, C, H, W) 4d Tensor, N = 1
+			gt_bbox: necessary in training mode, (G, 4) 2d Tensor where 
+		'''
+
 		# input x has to be (N, C, H, W) image batch, usually N=1
 		features, rois = self.rpn_layer(x)
 		# set the rois which are in the feature map scale.
-		feat_rois = rois / self.img2feat_rate
+		# or set the rois using gt_bounding boxes.
+		if self.training:
+			assert gt_bbox is not None and gt_labels is not None
+			feat_rois = self.proposal_targets(rois, gt_bbox, self.img2feat_rate)
+		else:
+			feat_rois = rois / self.img2feat_rate
 		# Now pooled is a (G, C, feature_size) 4-dimension tensor
-		pooled = self.roi_pooling(features[0], rois[0])
+		pooled = self.roi_pooling(features[0], feat_rois[0])
 
 		# treat the all the proposals as a batch and feed to the rest of the network
 		
 
 		pass
+
+	def proposal_targets(self, pd_rois, gt_bbox, img2feat_ratio):
+		'''	for the simplicity, the implementation is put to another file.
+		'''
+		pd_rois = pd_rois.data.cpu().numpy()
+		gt_bbox = gt_bbox.data.cpu().numpy()
+		output = proposal_targets_py(pd_rois, gt_bbox, img2feat_ratio)
+		return torch.from_numpy(output)
 
 	def build_loss(self):
 		'''	 to be decided....
