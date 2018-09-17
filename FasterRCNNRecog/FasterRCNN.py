@@ -14,6 +14,7 @@ class RPN(nn.module):
 	''' Region Proposal Network as a component of the Faster-rcnn net
 	'''
 	def __init__(self, configs = {
+								"vgg_rate": 16, \
 								"anchor_scales": [8, 16, 32], \
 								"anchor_ratios": [0.5, 1, 2], \
 								"lambda": 10, \
@@ -67,6 +68,9 @@ class RPN(nn.module):
 		output = proposal_py(np.transpose(rpn_prob, (0, 2, 3, 1)), \
 			np.transpose(rpn_bbox_pred, (0, 2, 3, 1)), \
 			self.configs)
+		# Considering the proposal_py function is processed in feature map size (smaller in number),
+		# it is needed to multiply the roi result.
+		output = output * self.configs["vgg_rate"]
 		return torch.from_numpy(output)
 
 	def anchor_targets_layer(self, rpn_prob, gt_boxes):

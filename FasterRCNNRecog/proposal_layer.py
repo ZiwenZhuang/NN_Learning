@@ -30,7 +30,7 @@ def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1
 	
 	# prepare to generate different shape
 	base = np.ones([img_info[0] // stride, img_info[1] // stride])
-	base = scale * scale
+	base = base * scale * scale
 	
 	# preparing anchors
 	anchors = []
@@ -44,7 +44,7 @@ def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1
 				np.expand_dims(y_ctr - y_half, axis=0),
 				np.expand_dims(x_ctr + x_half, axis=0),
 				np.expand_dims(y_ctr + y_half, axis=0)
-				], axis= 0)
+				], axis=0)
 			anchors.append(np.expand_dims(anchor, axis= 0))
 	# Till Now the dimensions should still be (_num_anchors, 4, H, W)
 	anchors = np.concatenate(anchors, axis= 0)
@@ -54,6 +54,7 @@ def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1
 
 	# (1, H, W, _num_anchors*4)
 	anchors = np.transpose(anchors, axis=(0, 2, 3, 1))
+	
 	# (H * W * _num_anchors, 4)
 	anchors = anchors.reshape((-1, 4))
 	return anchors
@@ -135,7 +136,8 @@ def nms(predictions, thresh):
 	return keep
 
 def proposal_layer(rpn_score, rpn_bbox, configs):
-	'''	Extract useful proposals that are both high in score and big in area.
+	'''	Extract useful proposals that are both high in score and big in area. (processed in terms of
+	feature map size.)
 		---------------------
 		Parameters
 		----------
