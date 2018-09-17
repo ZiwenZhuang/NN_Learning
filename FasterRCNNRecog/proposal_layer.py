@@ -215,7 +215,9 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 		--------
 		rpn_cls_score: the output from rpn_score layer, which contains the feature
 			map size. It has to be transposed to (1, H, W, A*2) 4-dimension numpy array.
-		gt_bbox: (N, 4) 2-dimension numpy array. The annotated ground-truth bounding boxes.
+		gt_bbox: (N, 4) 2-dimension numpy array. The annotated ground-truth bounding
+			boxes. It only needs to be in image scale, this function will take care of
+			that.
 		configs: configurations from the RPN network module, which must contains
 			the following fields: "anchor_scales", "anchor_ratios"
 		--------------------
@@ -236,10 +238,12 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	anchors = generate_anchor(feature_shape, scales= configs["anchor_scales"], ratios= configs["anchor_ratios"])
 
 	# calculate overlaps between each anchor and each gt_bbox
+	# BTW: change the gt_bbox into feature map scale to make the comparison
+	gt_bbox = gt_bbox / configs["vgg_rate"]
 	overlaps = cal_overlaps(anchors, gt_bbox)
 
 	# find out the greatest IoU between each anchor and the gt_bbox
-	max_IoU_ind = overlaps.argmax(axis = 1)
+	#max_IoU_ind = overlaps.argmax(axis = 1)
 	max_IoU = overlaps.amax(axis = 1)
 
 	# one of the output (rpn_labels)

@@ -83,7 +83,6 @@ class RPN(nn.module):
 									gt_boxes, self.configs)
 		return torch.from_numpy(labels), torch.from_numpy(bbox_targets)
 
-
 	def forward(self, x, gt_boxes= None):
 		assert isinstance(x, torch.Tensor) | isinstance(x, torch.Variable)
 		# one output item: feature map
@@ -98,6 +97,7 @@ class RPN(nn.module):
 		# for each pixel in the feature map.
 
 		# another output item: roi using the proposal layer
+		# This rois are marked in image size (not the feature map size)
 		rois = self.proposal_layer(rpn_prob, rpn_bbox_pred)
 
 		# check if in the training mode to build loss
@@ -130,6 +130,11 @@ class FasterRCNN(nn.module):
 			self.classes = classes
 			self.num_classes = len(classes)
 
+		# Sorry, due to the function structure, I have set the rate between the input
+		# image and the output feature map statically. Normally this is not any kind
+		# of changing parameters, so don't worry about that.
+		self.img2feat_rate = 16
+
 		self.rpn = RPN() # The whole region proposal layer
 		self.roi_pooling = ROIPool() # ROI pooling layer
 		self.fcs = nn.Sequential([
@@ -145,11 +150,15 @@ class FasterRCNN(nn.module):
 		self.bbox_fc = FC(4096, self.num_classes * 4, relu= False)
 
 	def forward(self, x):
-		# input x has to be (N, C, H, W) image batch
+		# input x has to be (N, C, H, W) image batch, usually N=1
 		features, rois = self.rpn_layer(x)
+		# set the rois which are in the feature map scale.
+		feat_rois = rois / self.img2feat_rate
 		# Now pooled is a (G, C, feature_size) 4-dimension tensor
 		pooled = self.roi_pooling(features[0], rois[0])
 
+		# treat the all the proposals as a batch and feed to the rest of the network
+		
 
 		pass
 
