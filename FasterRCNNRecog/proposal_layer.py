@@ -262,6 +262,7 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 
 def proposal_targets(pd_rois, gt_bbox, img2feat_ratio):
 	'''	Assign ground truth bounding boxes to the roi proposals in terms of the feature map.
+	And this is a simple version, do not kick me.... please.
 		----------------
 		Inputs:
 		-------

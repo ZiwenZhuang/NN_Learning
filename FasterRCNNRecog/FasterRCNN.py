@@ -170,7 +170,14 @@ class FasterRCNN(nn.module):
 		pooled = self.roi_pooling(features[0], feat_rois[0])
 
 		# treat the all the proposals as a batch and feed to the rest of the network
-		
+		pooled_fc = self.fcs(pooled)
+		pd_scores = self.score_fc(pooled_fc) # (G, C)
+		pd_bboxes = self.bbox_fc(pooled_fc) # (G * 4) defined as [x1, y1, x2, y2, ...]
+
+		# still the output from the network is bounding box deltas that need further
+		# transformation to output bounding boxes coordinates.
+		if self.training:
+			self.loss = self.build_loss()
 
 		pass
 
@@ -182,10 +189,14 @@ class FasterRCNN(nn.module):
 		output = proposal_targets_py(pd_rois, gt_bbox, img2feat_ratio)
 		return torch.from_numpy(output)
 
-	def build_loss(self):
-		'''	 to be decided....
+	def build_loss(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes):
+		'''	Considering the input for the rest of the network (except from the RPN part)
+		has been changed in the training mode, the pd_scores and pd_bboxes are supposed
+		to be aligned to the targets.
 		'''
-
+		# 1. Using bounding box transform to change target bbox into bounding boxes deltas.
+		# (in the input image scale)
+		
 		pass
 
 def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):

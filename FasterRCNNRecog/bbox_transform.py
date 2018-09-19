@@ -55,7 +55,6 @@ def bbox_transform(anchors, bbox):
 
 	return np.concatenate((tx, ty, th, tw), axis= 1)
 
-
 def bbox_transform_inv(anchors, gt_pred):
 	# x_t to x (inverse)
 	assert anchors.shape[0] == gt_pred.shape[0], \
