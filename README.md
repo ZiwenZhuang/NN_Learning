@@ -1,4 +1,7 @@
 # NN_Learning (NOT Finished...)
+## Finished parts
+* LeNet (basically training and testing, you can invoke the function from the source code)
+
 ## Idea
 * To learn existing neural network and put into practice on my own.  
 * Considering some of the network codes are too complicated to understand, I implemented them only to make them work, by not efficient enough
@@ -15,4 +18,4 @@ Only python packages are needed, and you don't need a GPU currently, since I don
 * pytorch (have to be installed manully)
 * matplotlib (show the learning loss)
 * COCO api (You have to install this manully. On windows you can refer to [this](https://github.com/philferriere/cocoapi))
-BTW: I run these codes on windows. But don't forget to setup the data path in the config.py file.
+BTW: I run these codes on windows. But don't forget to setup the data path in the config.py file and run them through the main.py file.
