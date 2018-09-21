@@ -10,6 +10,8 @@ import utils
 from proposal_layer import proposal_layer as proposal_py
 from proposal_layer import anchor_targets_layer as anchor_targets_py
 from proposal_layer import proposal_targets as proposal_targets_py
+from proposal_layer import generate_anchor
+from bbox_transform import corner2centered
 
 class RPN(nn.module):
 	''' Region Proposal Network as a component of the Faster-rcnn net
@@ -158,7 +160,7 @@ class FasterRCNN(nn.module):
 		'''
 
 		# input x has to be (N, C, H, W) image batch, usually N=1
-		features, rois = self.rpn_layer(x)
+		features, rois = self.rpn_layer(x, gt_bbox)
 		# set the rois which are in the feature map scale.
 		# or set the rois using gt_bounding boxes.
 		if self.training:
@@ -196,7 +198,8 @@ class FasterRCNN(nn.module):
 		'''
 		# 1. Using bounding box transform to change target bbox into bounding boxes deltas.
 		# (in the input image scale)
-		
+		anchors = generate_anchor()
+
 		pass
 
 def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):

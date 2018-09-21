@@ -9,8 +9,10 @@ from bbox_transform import bbox_transform_inv, bbox_transform
 
 def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1, 2]):
 	'''	Generating the 4 parameters (x1, y1, x2, y2) of each anchor.
-		And concatenate them along the 0-th dimension.
+	And concatenate them along the 0-th dimension.
 		---------------------------------
+		Parameters:
+		--------------------------
 		img_info: the [height, width] of the image                         x1, y1--------+>
 		stride: the stride that the sliding window would move                 |          |
 		scales: the width of anchor (when it is a square)                     |          |
