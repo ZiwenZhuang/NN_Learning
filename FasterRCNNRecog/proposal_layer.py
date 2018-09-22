@@ -335,6 +335,6 @@ def proposal_targets(pd_rois, gt_bbox, img2feat_ratio):
 			np.expand_dims(np.divide((gt_bbox[:, 3] - jit_y2), W) , axis = 0), \
 		], axis = 1)
 
-	rois = (jittered / img2feat_ratio).astype(int)
-	return rois, offsets_targets
+	feature_rois = np.expand_dims((jittered / img2feat_ratio).astype(int), axis = 0)
+	return feature_rois, offsets_targets
 	

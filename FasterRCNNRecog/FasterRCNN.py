@@ -107,7 +107,7 @@ class RPN(nn.module):
 		if self.training:
 			assert not gt_boxes is None
 			rpn_labels, rpn_bbox_targets = self.anchor_targets_layer(rpn_prob, gt_boxes)
-			loss = self.build_loss(rpn_prob, rpn_bbox_pred,\
+			self.loss = self.build_loss(rpn_prob, rpn_bbox_pred,\
 									rpn_labels, rpn_bbox_targets)
 
 		return features, rois
@@ -167,13 +167,13 @@ class FasterRCNN(nn.module):
 			assert gt_bbox is not None and gt_labels is not None
 			feat_rois, offsets_targets = self.proposal_targets(rois, gt_bbox, self.img2feat_rate)
 		else:
-			feat_rois = rois / self.img2feat_rate
+			feat_rois = (rois / self.img2feat_rate).astype(int)
 		# Now pooled is a (G, C, feature_size) 4-dimension tensor
 		pooled = self.roi_pooling(features[0], feat_rois[0])
 
 		# treat the all the proposals as a batch and feed to the rest of the network
 		pooled_fc = self.fcs(pooled)
-		pd_scores = self.score_fc(pooled_fc) # (G, C)
+		pd_scores = self.score_fc(pooled_fc) # (G, D) Here, D means the number of classes
 		pd_offsets = self.bbox_offset_fc(pooled_fc) # (G * 4) defined as [x1, y1, x2, y2, ...]
 
 		# still the output from the network is bounding box deltas that need further
@@ -182,10 +182,10 @@ class FasterRCNN(nn.module):
 			self.loss = self.build_loss(pd_scores, \
 										pd_offsets, \
 										gt_labels, \
-										offsets_targets, \
-										x.size()[2:4])
+										offsets_targets)
 
-		pass
+		pd_bbox = self.interpret_offsets(rois, pd_offsets)
+		return pd_scores, pd_bbox
 
 	def proposal_targets(self, pd_rois, gt_bbox, img2feat_ratio):
 		'''	for the simplicity, the implementation is put to another file.
@@ -197,17 +197,12 @@ class FasterRCNN(nn.module):
 		offsets_targets = torch.from_numpy(offsets_targets)
 		return rois, offsets_targets
 
-	def build_loss(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes, image_size):
+	def build_loss(self, pd_scores, pd_offsets, gt_labels, offsets_targets):
 		'''	Considering the input for the rest of the network (except from the RPN part)
 		has been changed in the training mode, the pd_scores and pd_bboxes are supposed
 		to be aligned to the targets.
 		'''
-		# 1. Using bounding box transform to change target bbox into bounding boxes deltas.
-		# (in the input image scale)
-		feature_size = [image_size[0] / self.img2feat_rate, image_size[1] / self.img2feat_rate]
 		
-
-
 		pass
 
 def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
