@@ -150,7 +150,7 @@ class FasterRCNN(nn.module):
 				FC(4096, self.num_classes, relu= False),\
 				nn.Softmax()
 			])
-		self.bbox_fc = FC(4096, self.num_classes * 4, relu= False)
+		self.bbox_offset_fc = FC(4096, self.num_classes * 4, relu= False)
 
 	def forward(self, x, gt_bbox=None, gt_labels=None):
 		'''	Inputs:
@@ -165,7 +165,7 @@ class FasterRCNN(nn.module):
 		# or set the rois using gt_bounding boxes.
 		if self.training:
 			assert gt_bbox is not None and gt_labels is not None
-			feat_rois = self.proposal_targets(rois, gt_bbox, self.img2feat_rate)
+			feat_rois, offsets_targets = self.proposal_targets(rois, gt_bbox, self.img2feat_rate)
 		else:
 			feat_rois = rois / self.img2feat_rate
 		# Now pooled is a (G, C, feature_size) 4-dimension tensor
@@ -174,12 +174,16 @@ class FasterRCNN(nn.module):
 		# treat the all the proposals as a batch and feed to the rest of the network
 		pooled_fc = self.fcs(pooled)
 		pd_scores = self.score_fc(pooled_fc) # (G, C)
-		pd_bboxes = self.bbox_fc(pooled_fc) # (G * 4) defined as [x1, y1, x2, y2, ...]
+		pd_offsets = self.bbox_offset_fc(pooled_fc) # (G * 4) defined as [x1, y1, x2, y2, ...]
 
 		# still the output from the network is bounding box deltas that need further
 		# transformation to output bounding boxes coordinates.
 		if self.training:
-			self.loss = self.build_loss()
+			self.loss = self.build_loss(pd_scores, \
+										pd_offsets, \
+										gt_labels, \
+										offsets_targets, \
+										x.size()[2:4])
 
 		pass
 
@@ -188,17 +192,21 @@ class FasterRCNN(nn.module):
 		'''
 		pd_rois = pd_rois.data.cpu().numpy()
 		gt_bbox = gt_bbox.data.cpu().numpy()
-		output = proposal_targets_py(pd_rois, gt_bbox, img2feat_ratio)
-		return torch.from_numpy(output)
+		rois, offsets_targets = proposal_targets_py(pd_rois, gt_bbox, img2feat_ratio)
+		rois = torch.from_numpy(rois)
+		offsets_targets = torch.from_numpy(offsets_targets)
+		return rois, offsets_targets
 
-	def build_loss(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes):
+	def build_loss(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes, image_size):
 		'''	Considering the input for the rest of the network (except from the RPN part)
 		has been changed in the training mode, the pd_scores and pd_bboxes are supposed
 		to be aligned to the targets.
 		'''
 		# 1. Using bounding box transform to change target bbox into bounding boxes deltas.
 		# (in the input image scale)
-		anchors = generate_anchor()
+		feature_size = [image_size[0] / self.img2feat_rate, image_size[1] / self.img2feat_rate]
+		
+
 
 		pass
 

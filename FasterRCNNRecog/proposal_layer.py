@@ -262,6 +262,36 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 
 	return rpn_labels, rpn_bbox_targets
 
+def jitter_box(boxes):
+	'''	Parameters:
+		-----------
+		boxes: (N, 4) [x1, y1, x2, y2] numpy 2d array, which denotes the corner coordinates in the 
+			readme description.
+		-----------
+		Output:
+		-------
+		jittered: (N, 4) [x1, y1, x2, y2] numpy 2d array.
+	'''
+	# The target offsets has to be calculated additionally. You can figure out why it is not deltas
+	# The initial random value is in [0, 1), which need to be transformed to [-0.5, 0.5]
+	deltas = np.random.rand(boxes.shape) - (np.ones(boxes.shape) * 0.5)
+
+	x1 = boxes[:, 0]
+	y1 = boxes[:, 1]
+	x2 = boxes[:, 2]
+	y2 = boxes[:, 3]
+	H = x2 - x1
+	W = y2 - y1
+
+	jittered = np.concatenate([
+			np.expand_dims((x1 - np.multiply(deltas[:, 0], H)), axis = 0), \
+			np.expand_dims((y1 - np.multiply(deltas[:, 1], H)), axis = 0), \
+			np.expand_dims((x2 - np.multiply(deltas[:, 2], H)), axis = 0), \
+			np.expand_dims((y2 - np.multiply(deltas[:, 3], H)), axis = 0), \
+		], axis = 1)
+
+	return jittered
+
 def proposal_targets(pd_rois, gt_bbox, img2feat_ratio):
 	'''	Assign ground truth bounding boxes to the roi proposals in terms of the feature map.
 	And this is a simple version, do not kick me.... please.
@@ -278,9 +308,33 @@ def proposal_targets(pd_rois, gt_bbox, img2feat_ratio):
 		Outputs:
 		-------
 		rois: (1, N, 4) numpy 3d array the target roi in the scale of feature map.
+		offsets_targets: (1, N, 4) [dx1, dy1, dx2, dy2] Considering the rest of faeter-rcnn net are
+			predicting the offset based on the given pooled region.
+			All value is the ratio of delta in terms of the height and width (H, W)
+			Assuming the proposal for the image is [x1, y1, x2, y2], the dx1 in the offset target
+			means that the predicted bounding boxes coordinates should be like: x1 + dx1 * (x2 - x1)
 	'''
-	# I'm lazy for now, so I won't filter out the hard targets or jitter the bounding boxes.
-	rois = gt_bbox / img2feat_ratio
+	# This part of the process is implemented on my own, which does not based on any exiting code.
+	# May be referring a little to the longcw repo, but it did not light me up. I still implemented
+	# these through my own understanding.
 
-	return rois
+	jittered = jitter_box(gt_bbox)
+	
+	# calculate the target offsets
+	jit_x1 = jittered[:, 0]
+	jit_y1 = jittered[:, 1]
+	jit_x2 = jittered[:, 2]
+	jit_y2 = jittered[:, 3]
+	H = jit_x2 - jit_x1
+	W = jit_y2 - jit_y1
+
+	offsets_targets = np.concatenate([
+			np.expand_dims(np.divide((gt_bbox[:, 0] - jit_x1), H) , axis = 0), \
+			np.expand_dims(np.divide((gt_bbox[:, 1] - jit_y1), W) , axis = 0), \
+			np.expand_dims(np.divide((gt_bbox[:, 2] - jit_x2), H) , axis = 0), \
+			np.expand_dims(np.divide((gt_bbox[:, 3] - jit_y2), W) , axis = 0), \
+		], axis = 1)
+
+	rois = (jittered / img2feat_ratio).astype(int)
+	return rois, offsets_targets
 	
