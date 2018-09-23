@@ -202,8 +202,19 @@ class FasterRCNN(nn.module):
 		has been changed in the training mode, the pd_scores and pd_bboxes are supposed
 		to be aligned to the targets.
 		'''
-		
-		pass
+		# using cross entropy loss for the classification
+		CEL_criterion = nn.CrossEntropyLoss()
+		# using smooth L1 loss for the bounding box prediction
+		# I will calculate the mean and sum manually
+		SL1_criterion = nn.SmoothL1Loss(reduction = "none")
+
+		cel = CEL_criterion(pd_scores, gt_labels)
+
+		sl1 = SL1_criterion(pd_offsets, offsets_targets)
+		sl1 = sl1.mean(dim = 0) # for each element along the N's items
+		sl1 = sl1.sum() # The exact sum
+
+		return cel + sl1
 
 def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 	'''	By training the network, it will print the traing epoch, and returns the learnt network
