@@ -2,23 +2,24 @@
 
 import torch
 import torch.nn as nn
-import torchvision.datasets as datasets
 import torchvision.models as models
+import torchvision.datasets as dset
+import torchvision.transforms as transforms
 
-from modules import Conv2d, FC, ROIPool, VGG16
-import utils
-from proposal_layer import proposal_layer as proposal_py
-from proposal_layer import anchor_targets_layer as anchor_targets_py
-from proposal_layer import proposal_targets as proposal_targets_py
-from proposal_layer import generate_anchor
-from bbox_transform import corner2centered
+from .modules import Conv2d, FC, ROIPool, VGG16
+from . import utils
+from .proposal_layer import proposal_layer as proposal_py
+from .proposal_layer import anchor_targets_layer as anchor_targets_py
+from .proposal_layer import proposal_targets as proposal_targets_py
+from .proposal_layer import generate_anchor
+from .bbox_transform import corner2centered
 
-class RPN(nn.module):
+class RPN(nn.Module):
 	''' Region Proposal Network as a component of the Faster-rcnn net
 	'''
 	def __init__(self, configs = {
 								"vgg_rate": 16, \
-								"anchor_scales": [8, 16, 32], \
+								"anchor_scales": [4, 8, 16], \
 								"anchor_ratios": [0.5, 1, 2], \
 								"lambda": 10, \
 								"rpn_min_size": 16,\
@@ -33,11 +34,11 @@ class RPN(nn.module):
 		''' Using configs field to store all the configurations as well as hyper-parameters
 			"lambda": this is the hyper-parameter during calculating the loss
 		'''
-		super.__init__(self, RPN)
+		super(RPN, self).__init__()
 		self.configs = configs
 
 		# The covnets that outputs the feature map
-		self.feature_net = modules.VGG16()
+		self.feature_net = VGG16()
 
 		# Considering the output of vgg is 512 channel, take the input of Conv layer as 512 channel
 		self.conv0 = Conv2d(512, 512, 3, same_padding=True)
@@ -80,14 +81,14 @@ class RPN(nn.module):
 		''' For the simpliciry, the datail implementation is moved to the proposal_layer file.
 		'''
 		rpn_prob = rpn_prob.data.cpu().numpy()
-		if isinstance(gt_boxes, nn.Tensor):
+		if isinstance(gt_boxes, torch.Tensor):
 			gt_boxes = gt_boxes.data.cpu().numpy()
 		labels, bbox_targets = anchor_targets_py(np.transpose(rpn_prob, (0, 2, 3, 1)), \
 									gt_boxes, self.configs)
 		return torch.from_numpy(labels), torch.from_numpy(bbox_targets)
 
 	def forward(self, x, gt_boxes= None):
-		assert isinstance(x, torch.Tensor) | isinstance(x, torch.Variable)
+		assert isinstance(x, torch.Tensor)
 		# one output item: feature map
 		features = self.feature_net(x)
 
@@ -117,21 +118,25 @@ class RPN(nn.module):
 		method.
 			It stores the loss directly to the self.loss and also returns
 		'''
-		smooth_loss = nn.SmoothL1Loss()
-		cls_loss = smooth_loss(prob[labels != -1], labels[labels != -1])
+		cross_entropy = nn.CrossEntropyLoss()
+		prob = prob.permute([0, 2, 3, 1]).contiguous().view(-1, 2)
+		labels_l = labels.long()
+		cls_loss = cross_entropy(prob[labels != -1], labels_l[labels != -1])
 
-		box_loss = smooth_loss(bbox_pred[labels == 1], bbox_targets[labels == 1])
+		smooth_loss = nn.SmoothL1Loss()
+		bbox_pred = bbox_pred.permute([0, 2, 3, 1]).contiguous().view(-1, 4)
+		bbox_targets_f = bbox_targets.float()
+		box_loss = smooth_loss(bbox_pred[labels == 1], bbox_targets_f[labels == 1])
 		box_loss = box_loss.sum() # based on page 3 at 'fast rcnn' paper
 
-		self.loss = cls_loss + configs["lambda"] * box_loss
+		self.loss = cls_loss + self.configs["lambda"] * box_loss
 		return self.loss
 
-class FasterRCNN(nn.module):
-	def __init__(self, classes = None):
-		super.__init__(self, FasterRCNN)
-		if classes is not None:
-			self.classes = classes
-			self.num_classes = len(classes)
+class FasterRCNN(nn.Module):
+	def __init__(self, num_classes = None):
+		super(FasterRCNN, self).__init__()
+		if num_classes is not None:
+			self.num_classes = num_classes
 
 		# Sorry, due to the function structure, I have set the rate between the input
 		# image and the output feature map statically. Normally this is not any kind
@@ -140,34 +145,33 @@ class FasterRCNN(nn.module):
 
 		self.rpn = RPN() # The whole region proposal layer
 		self.roi_pooling = ROIPool() # ROI pooling layer
-		self.fcs = nn.Sequential([
+		self.fcs = nn.Sequential(
 				FC(512*7*7, 4096),\
 				nn.Dropout(),\
 				FC(4096, 4096),\
-				nn.Dropout(),\
-			])
-		self.score_fc = nn.Sequential([
+				nn.Dropout() )
+		self.score_fc = nn.Sequential(
 				FC(4096, self.num_classes, relu= False),\
-				nn.Softmax()
-			])
+				nn.Softmax() )
 		self.bbox_offset_fc = FC(4096, self.num_classes * 4, relu= False)
 
 	def forward(self, x, gt_bbox=None, gt_labels=None):
 		'''	Inputs:
 			-------
 			x: the input image (N, C, H, W) 4d Tensor, N = 1
-			gt_bbox: necessary in training mode, (G, 4) 2d Tensor where 
+			gt_bbox: necessary in training mode, (G, 4) 2d Tensor [x1, y1, x2, y2]
+			gt_labels: necessary in training mode, (G,) 1d is ok, all are indeces
 		'''
 
 		# input x has to be (N, C, H, W) image batch, usually N=1
-		features, rois = self.rpn_layer(x, gt_bbox)
+		features, rois = self.rpn(x, gt_bbox)
 		# set the rois which are in the feature map scale.
 		# or set the rois using gt_bounding boxes.
 		if self.training:
 			assert gt_bbox is not None and gt_labels is not None
 			feat_rois, offsets_targets = self.proposal_targets(rois, gt_bbox, self.img2feat_rate)
 		else:
-			feat_rois = (rois / self.img2feat_rate).astype(int)
+			feat_rois = (torch.from_numpy(rois) / self.img2feat_rate).astype(int)
 		# Now pooled is a (G, C, feature_size) 4-dimension tensor
 		pooled = self.roi_pooling(features[0], feat_rois[0])
 
@@ -190,8 +194,8 @@ class FasterRCNN(nn.module):
 	def proposal_targets(self, pd_rois, gt_bbox, img2feat_ratio):
 		'''	for the simplicity, the implementation is put to another file.
 		'''
-		pd_rois = pd_rois.data.cpu().numpy()
-		gt_bbox = gt_bbox.data.cpu().numpy()
+		pd_rois = pd_rois.cpu().numpy()
+		gt_bbox = gt_bbox.cpu().numpy()
 		rois, offsets_targets = proposal_targets_py(pd_rois, gt_bbox, img2feat_ratio)
 		rois = torch.from_numpy(rois)
 		offsets_targets = torch.from_numpy(offsets_targets)
@@ -216,12 +220,70 @@ class FasterRCNN(nn.module):
 
 		return cel + sl1
 
+	def savetofile(self, filepath):
+		''' Save the parameters of this model to the file, by using state_dict().
+			So be sure to use the loadfromfile method to recover the parameters.
+		'''
+		torch.save(self.state_dict(), filepath)
+
 def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 	'''	By training the network, it will print the traing epoch, and returns the learnt network
 	which was set to testing mode (.training = False). It will save the entire network data to
 	given file (override) as well.
 	'''
+
 	# 1. configuring the data
 	#	read files and setup the targets
-	
-	
+
+	data_detections = dset.CocoDetection(root = data_path["train_img"],
+										annFile = data_path["train_instances"],
+										transform = transforms.ToTensor())
+	# set hyper-parameters
+	config = {	"learning_rate": 0.001,
+				"momentum": 0.9,
+				"weight_decay": 0.0005}
+
+	# initialize the network
+	net = FasterRCNN(80)
+	net.train() # set the network to training mode
+	# Considering I still did not understand why longcw used a pretrained part inside VGG16,
+	# I set the entire network trainable.
+	optimizer = torch.optim.SGD(net.parameters(), lr= config["learning_rate"], momentum= config["momentum"], weight_decay= config["weight_decay"])
+
+	# entering epoch and then prepare image and data for the network
+	epoch_done = 0
+	for img, targets in data_detections:
+		print("Entering epoch: " + str(epoch_done + 1) + "...")
+
+		# get one batch of input (only one image)
+		img_batch = img.unsqueeze(0)
+
+		# set up the labels (N items in all)
+		gt_labels = [i["category_id"] for i in targets] # a list of int
+		gt_bbox = [i["bbox"] for i in targets] # a list of 4-element floats
+		gt_bbox = np.array(gt_bbox)
+		x1s, y1s, x2s, y2s = utils.coco2corner(gt_bbox) # change the corner format
+		gt_bbox = np.concatenate([np.expand_dims(x1s, 0), np.expand_dims(y1s, 0),\
+								np.expand_dims(y1s, 0), np.expand_dims(y2s, 0)])
+
+		# forward (train the two parts together)
+		pd_scores, pd_bbox = net(img_batch, gt_bbox, gt_labels)
+		total_loss = net.loss + net.rpn.loss
+
+		# backward
+		optimizer.zero_grad()
+		total_loss.backward()
+		uilts.clip_gradient(net, 10.)
+		optimizer.step()
+
+		# display details to show progress
+		print("loss: " + str(total_loss))
+
+		epoch_done += 1
+
+	# store the network into file
+	print("Saving learnt model into file: " + store_path)
+	net.savetofile(store_path)
+	print("Done saving!")
+
+	return net

@@ -4,8 +4,8 @@
 # If you want to see the original code, please clone the whole repo for a closer view.
 
 import numpy as np
-from utils import box_IoU, cal_overlaps
-from bbox_transform import bbox_transform_inv, bbox_transform
+from .utils import box_IoU, cal_overlaps
+from .bbox_transform import bbox_transform_inv, bbox_transform
 
 def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1, 2]):
 	'''	Generating the 4 parameters (x1, y1, x2, y2) of each anchor.
@@ -25,19 +25,19 @@ def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1
 	_num_anchors = (img_info[0] // stride) * (img_info[1] // stride)
 	x_ctr = np.arange(img_info[0] // stride)
 	y_ctr = np.arange(img_info[1] // stride)
-	x_ctr, y_ctr = np.meshgrid(x_ctr, y_ctr)
+	x_ctr, y_ctr = np.meshgrid(y_ctr, x_ctr)
 	# let the number be aligned to the pixel coordinates
 	x_ctr = (x_ctr * stride) + (stride // 2)
 	y_ctr = (y_ctr * stride) + (stride // 2)
 	
 	# prepare to generate different shape
 	base = np.ones([img_info[0] // stride, img_info[1] // stride])
-	base = base * scale * scale
 	
 	# preparing anchors
 	anchors = []
 	# generate anchors (still in matrix) and put into a list
 	for scale in scales:
+		base = base * scale * scale
 		for ratio in ratios:
 			x_half = base * ratio / 2
 			y_half = base / ratio / 2
@@ -55,7 +55,7 @@ def generate_anchor(img_info, stride = 1, scales = [8, 16, 32], ratios = [0.5, 1
 	anchors = anchors.reshape((1, -1, img_info[0] // stride, img_info[1] // stride))
 
 	# (1, H, W, _num_anchors*4)
-	anchors = np.transpose(anchors, axis=(0, 2, 3, 1))
+	anchors = np.transpose(anchors, axes=(0, 2, 3, 1))
 	
 	# (H * W * _num_anchors, 4)
 	anchors = anchors.reshape((-1, 4))
@@ -181,7 +181,7 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 	    # the first set of channels are back_ground probs
 		# the second set are the fore_ground probs, which we want
 	pd_scores = rpn_score.reshape((-1, 2))[:, 1]
-	pd_bbox = apply_delta(anchors, rpn_bbox)
+	pd_bbox = apply_delta(anchors, pd_bbox)
 
 	# 2. clip prediction bounding boxes to image size (using the size of the feature map here)
 	pd_bbox = clip_boxes(pd_bbox, feature_shape)
@@ -200,11 +200,12 @@ def proposal_layer(rpn_score, rpn_bbox, configs):
 	pd_scores = pd_scores[order]
 
 	# 6. perform NMS
-	rois = np.hstack(pd_bbox, pd_scores)
+	#rois = np.hstack((pd_bbox, np.expand_dims(pd_scores, 1)))
+	rois = pd_bbox # there should be no need for scores
 	keep = nms(rois, configs["nms_thresh"])
 	rois = rois[keep]
 
-	return numpy.expand_dims(rois, 0)
+	return np.expand_dims(rois, 0)
 
 def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	'''	This method generates targets for the entire region proposal network,
@@ -245,18 +246,18 @@ def anchor_targets_layer(rpn_cls_score, gt_bbox, configs):
 	overlaps = cal_overlaps(anchors, gt_bbox)
 
 	# find out the greatest IoU between each anchor and the gt_bbox
-	#max_IoU_ind = overlaps.argmax(axis = 1)
-	max_IoU = overlaps.amax(axis = 1)
+	max_IoU_ind = overlaps.argmax(axis = 1)
+	max_IoU = overlaps.max(axis = 1)
 
 	# one of the output (rpn_labels)
-	rpn_labels = numpy.ones((anchors.shape[0],)) * -1
+	rpn_labels = np.ones((anchors.shape[0],)) * -1
 	rpn_labels[max_IoU > configs["IoU_high_thresh"]] = 1
 	rpn_labels[max_IoU < configs["IoU_low_thresh"]] = 0
 
 	# another output (rpn_bbox_targets)
 	# (1) assign the gt_bbox with the greatest IoU for each anchors
-	target_bboxes = [gt_bbox[i] for i in max_IoU_ind]
-	target_bboxes = np.concatenate(target_bboxes, axis= 1).transpose()
+	target_bboxes = [np.expand_dims(gt_bbox[i], 0) for i in max_IoU_ind]
+	target_bboxes = np.concatenate(target_bboxes, axis= 0)
 	# (2) get the target predictions
 	rpn_bbox_targets = bbox_transform(anchors, target_bboxes)
 
