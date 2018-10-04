@@ -22,7 +22,8 @@ def corner2centered(box):
 	h = (box[:, 2] - box[:, 0])
 	w = (box[:, 3] - box[:, 1])
 	
-	return np.concatenate((x, y, h, w), axis= 1)
+	return np.concatenate((np.expand_dims(x, 1), np.expand_dims(y, 1),\
+							np.expand_dims(h, 1), np.expand_dims(w, 1)), axis= 1)
 
 def centered2corner(box):
 	'''	A tool that transform the parameter from (x_c, y_c, h, w) into (x1, y1, x2, y2)
@@ -37,7 +38,8 @@ def centered2corner(box):
 	x2 = box[:, 0] + half_h
 	y2 = box[:, 1] + half_w
 
-	return np.concatenate((x1, y1, x2, y2), axis=1)
+	return np.concatenate((np.expand_dims(x1, 0), np.expand_dims(y1, 0),\
+							np.expand_dims(x2, 0), np.expand_dims(y2, 0)), axis=1)
 
 def bbox_transform(anchors, bbox):
 	# x to x_t
@@ -53,7 +55,8 @@ def bbox_transform(anchors, bbox):
 	th = np.log(bbox[:, 2] / anchors[:, 2])
 	tw = np.log(bbox[:, 3] / anchors[:, 3])
 
-	return np.concatenate((tx, ty, th, tw), axis= 1)
+	return np.concatenate((np.expand_dims(tx, 1), np.expand_dims(ty, 1),\
+							np.expand_dims(th, 1), np.expand_dims(tw, 1)), axis= 1)
 
 def bbox_transform_inv(anchors, gt_pred):
 	# x_t to x (inverse)
@@ -68,5 +71,6 @@ def bbox_transform_inv(anchors, gt_pred):
 	h = np.multiply(anchors[:, 2], np.exp(gt_pred[:, 2]))
 	w = np.multiply(anchors[:, 3], np.exp(gt_pred[:, 3]))
 
-	centered_form = np.concatenate((x, y, h, w), axis= 1)
+	centered_form = np.concatenate((np.expand_dims(x, 0), np.expand_dims(y, 0),\
+									np.expand_dims(h, 0), np.expand_dims(w, 0)), axis= 1)
 	return centered2corner(centered_form)

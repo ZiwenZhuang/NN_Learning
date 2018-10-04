@@ -75,16 +75,16 @@ def box_IoU(box0, box1):
 	'''
 	# Prepare to broadcasting any of the array, if needed
 	if box0.shape == (4,):
-		box0.reshape((-1, 4))
+		box0 = box0.reshape((-1, 4))
 	if box1.shape == (4,):
-		box1.reshape((-1, 4))
+		box1 = box1.reshape((-1, 4))
 	np.broadcast_arrays(box0, box1)
 
 	# Find the intersected area
-	inter_x1 = np.max(box0[:, 0], box1[:, 0])
-	inter_y1 = np.max(box0[:, 1], box1[:, 1])
-	inter_x2 = np.min(box0[:, 2], box1[:, 2])
-	inter_y2 = np.min(box0[:, 3], box1[:, 3])
+	inter_x1 = np.maximum(box0[:, 0], box1[:, 0])
+	inter_y1 = np.maximum(box0[:, 1], box1[:, 1])
+	inter_x2 = np.minimum(box0[:, 2], box1[:, 2])
+	inter_y2 = np.minimum(box0[:, 3], box1[:, 3])
 
 	# Calculate the intersection area
 	inter_area = np.abs(inter_x2 - inter_x1 + 1) * np.abs(inter_y2 - inter_y1 + 1)
@@ -117,8 +117,37 @@ def cal_overlaps(anchors, gt_bboxes):
 	# for each ground truth bounding box, calculate all the IoU with all the N anchors
 	for i in range(gt_bboxes.shape[0]):
 		a_column = box_IoU(anchors, gt_bboxes[i])
-		output.append(a_column)
+		output.append(np.expand_dims(a_column, 1))
 
 	# put all the IoUs into a single matrix
-	return np.ascontiguousaray(numpy.concatenate(output, axis=1))
+	return np.ascontiguousarray(np.concatenate(output, axis=1))
 
+def coco2corner(coco_bbox):
+	'''	This function returns the corners coordinates of a bounding box,
+	given bbox field from COCOapi is not aligned like that.
+		By the way, you can input a 2darray (N, 4), and it will still
+	returns 4 lists of number with length N.
+	'''
+	if len(coco_bbox.shape) == 2:
+		coco_bbox.transpose()
+	x1 = coco_bbox[0]
+	y1 = coco_bbox[1]
+	x2 = coco_bbox[0] + coco_bbox[2]
+	y2 = coco_bbox[1] + coco_bbox[3]
+	return x1, y1, x2, y2
+
+def clip_gradient(model, clip_norm):
+	'''	Preventing the gradient goes too big that the parameters shoot to nowhere.
+	This function is learnt from longcw/faster-rcnn
+	'''
+	totalnorm = 0
+	for p in model.parameters():
+		if p.requires_grad:
+			modulenorm = p.grad.data.norm()
+			totalnorm += modulenorm ** 2
+	totalnorm = np.sqrt(totalnorm)
+
+	norm = clip_norm / max(totalnorm, clip_norm)
+	for p in model.parameters():
+		if p.requires_grad:
+			p.grad.mul_(norm)

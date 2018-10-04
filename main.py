@@ -9,11 +9,14 @@ import numpy as np
 import LeNetRecog.binHandler as binHandler
 import LeNetRecog.LeNet as LeNet
 
+import FasterRCNNRecog.FasterRCNN as FasterRCNN
+
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
 import cv2
 
+######################### Working on the LeNet #####################
 def test_LeNet_utils():
     imgs = torch.from_numpy(binHandler.all_img(config.MnistData["train_img"])).float()
     labels = binHandler.all_label(config.MnistData["train_label"])
@@ -25,9 +28,10 @@ def test_LeNet_utils():
 
 def LeNetDemo():
 	#test_LeNet_utils()
-	#trained_net = LeNet.train(config.MnistData)
+	trained_net = LeNet.train(config.MnistData)
 	LeNet.test(config.MnistData, filepath = "./LeNetRecog/LeNet_learnt.pth")
 
+######################## Working on the Faster-RCNN ########################
 def test_torch_COCOapi():
 	from pycocotools.coco import COCO
 	# The code is based on https://pytorch.org/docs/stable/torchvision/datasets.html#coco
@@ -39,11 +43,17 @@ def test_torch_COCOapi():
 	img, targets = detections[3] # load 4th sample
 
 	print("Image Size: ", img.size())
-	print("Annotation keys: ", targets[2].keys()) # dict_keys(['segmentation', 'area', 'iscrowd', 'image_id', 'bbox', 'category_id', 'id'])
+	# dict_keys(['segmentation', 'area', 'iscrowd', 'image_id', 'bbox', 'category_id', 'id'])
+	print("Annotation keys: ", targets[2].keys())
 	#plt.imshow(img.numpy().transpose((1, 2, 0)))
 	#plt.show()
 	print("Bounding boxes coordinates: ", end = "")
 	print(targets[0]["bbox"])
+	print("type of Bounding boxes coordinates: ", end = "")
+	print(type(targets[0]["bbox"][1]))
+
+	print("type of category_id:", end = "")
+	print(type(targets[0]["category_id"]))
 
 def coor_transform(shape, coordinates):
 	'''	shape has to have 2 elements indicating image height and width.
@@ -77,7 +87,9 @@ def test_add_bbox():
 		plt.imshow(img)
 		plt.pause(2)
 		
+def FasterRCNNDemo():
+	net = FasterRCNN.train(config.COCOData)
 
 if __name__ == "__main__":
-	test_add_bbox()
+	FasterRCNNDemo()
 	pass
