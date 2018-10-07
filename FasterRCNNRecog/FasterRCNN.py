@@ -257,6 +257,10 @@ def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 	which was set to testing mode (.training = False). It will save the entire network data to
 	given file (override) as well.
 	'''
+
+	# 1. configuring the data
+	#	read files and setup the targets
+
 	data_detections = dset.CocoDetection(root = data_path["train_img"],
 										annFile = data_path["train_instances"],
 										transform = transforms.ToTensor())
