@@ -78,8 +78,10 @@ def test_add_bbox():
 		img = img.numpy().transpose((1,2,0))
 		img = np.ascontiguousarray(img)
 		print("showing image(" + str(img.shape) + ") with " + str(len(targets)) + " bounding boxes")
+		gt_labels = []
 		for target in targets:
 			coordinates = target["bbox"]
+			gt_labels.append(target["category_id"])
 			print(coordinates)
 			x1, y1, x2, y2 = coor_transform(img.shape[0:2], coordinates)
 			img = cv2.rectangle(img, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)

@@ -58,8 +58,8 @@ class ROIPool(nn.Module):
 			output: (G, C, out_size) 4-dimension, where each channel has its own region extracted
 		'''
 		# For the simplicity, this layer does not process a batch. It pools in one image each.
-		num_channels, img_height, img_width = img.shape()
-		num_rois = rois.shape()[0]
+		num_channels, img_height, img_width = img.shape
+		num_rois = rois.shape[0]
 
 		overall_output = []
 		rois = rois.long() # make the data to int in order to use as coordinates
@@ -68,11 +68,8 @@ class ROIPool(nn.Module):
 			y1 = roi[1]
 			x2 = roi[2]
 			y2 = roi[3]
-			all_channel = []
-			for chan in img:
-				one_img = chan[x1:x2, y1:y2]
-				all_channel.append(self.pool(one_img).unsqueeze(0))
-			overall_output.append(torch.cat(all_channel, dim = 0).unsqueeze(0))
+			pooled = self.pool(img[:, x1:x2, y1:y2])
+			overall_output.append(pooled.unsqueeze(0))
 		overall_output = torch.cat(overall_output, dim = 0)
 
 		return overall_output

@@ -85,9 +85,9 @@ def clip_boxes(boxes, im_shape):
 	# series of y1
 	boxes[:, 1::4] = np.maximum(np.minimum(boxes[:, 1::4], im_shape[1] - 1), 0)
 	# series of x2
-	boxes[:, 2::4] = np.maximum(np.minimum(boxes[:, 2::4], im_shape[0] - 1), 0)
+	boxes[:, 2::4] = np.maximum(np.minimum(boxes[:, 2::4], im_shape[0]), 1)
 	# series of y2
-	boxes[:, 3::4] = np.maximum(np.minimum(boxes[:, 3::4], im_shape[1] - 1), 0)
+	boxes[:, 3::4] = np.maximum(np.minimum(boxes[:, 3::4], im_shape[1]), 1)
 
 	return boxes
 
@@ -275,7 +275,7 @@ def jitter_box(boxes):
 	'''
 	# The target offsets has to be calculated additionally. You can figure out why it is not deltas
 	# The initial random value is in [0, 1), which need to be transformed to [-0.5, 0.5]
-	deltas = np.random.rand(boxes.shape) - (np.ones(boxes.shape) * 0.5)
+	deltas = np.random.rand(*boxes.shape) - (np.ones([*boxes.shape]) * 0.5)
 
 	x1 = boxes[:, 0]
 	y1 = boxes[:, 1]
@@ -285,15 +285,15 @@ def jitter_box(boxes):
 	W = y2 - y1
 
 	jittered = np.concatenate([
-			np.expand_dims((x1 - np.multiply(deltas[:, 0], H)), axis = 0), \
-			np.expand_dims((y1 - np.multiply(deltas[:, 1], H)), axis = 0), \
-			np.expand_dims((x2 - np.multiply(deltas[:, 2], H)), axis = 0), \
-			np.expand_dims((y2 - np.multiply(deltas[:, 3], H)), axis = 0), \
+			np.expand_dims((x1 - np.multiply(deltas[:, 0], H)), axis = 1), \
+			np.expand_dims((y1 - np.multiply(deltas[:, 1], W)), axis = 1), \
+			np.expand_dims((x2 - np.multiply(deltas[:, 2], H)), axis = 1), \
+			np.expand_dims((y2 - np.multiply(deltas[:, 3], W)), axis = 1), \
 		], axis = 1)
 
 	return jittered
 
-def proposal_targets(pd_rois, gt_bbox, img2feat_ratio):
+def proposal_targets(pd_rois, gt_bbox, img2feat_ratio, features_shape):
 	'''	Assign ground truth bounding boxes to the roi proposals in terms of the feature map.
 	And this is a simple version, do not kick me.... please.
 		----------------
@@ -305,6 +305,7 @@ def proposal_targets(pd_rois, gt_bbox, img2feat_ratio):
 			check the coordinate system in terms of the image.
 		img2feat_ratio: the rate between the input image to the entire network and the feature
 			map output from the RPN network.
+		features_shape: (N, H, W) index-able value, which helps to clip the generated boxes.
 		----------------
 		Outputs:
 		-------
@@ -319,23 +320,38 @@ def proposal_targets(pd_rois, gt_bbox, img2feat_ratio):
 	# May be referring a little to the longcw repo, but it did not light me up. I still implemented
 	# these through my own understanding.
 
-	jittered = jitter_box(gt_bbox)
-	
-	# calculate the target offsets
+	jittered = (jitter_box(gt_bbox) / img2feat_ratio).astype(int)
+
+	# clip the boxes
+	feat_H = features_shape[2]
+	feat_W = features_shape[3]
+	jittered = clip_boxes(jittered, (feat_H, feat_W))
+
 	jit_x1 = jittered[:, 0]
 	jit_y1 = jittered[:, 1]
 	jit_x2 = jittered[:, 2]
 	jit_y2 = jittered[:, 3]
+	# check to prevent roi of size 0
+	jit_x2[jit_x2 == jit_x1] += 1
+	jit_y2[jit_y2 == jit_y1] += 1
+	# calculate the target offsets
 	H = jit_x2 - jit_x1
 	W = jit_y2 - jit_y1
 
 	offsets_targets = np.concatenate([
-			np.expand_dims(np.divide((gt_bbox[:, 0] - jit_x1), H) , axis = 0), \
-			np.expand_dims(np.divide((gt_bbox[:, 1] - jit_y1), W) , axis = 0), \
-			np.expand_dims(np.divide((gt_bbox[:, 2] - jit_x2), H) , axis = 0), \
-			np.expand_dims(np.divide((gt_bbox[:, 3] - jit_y2), W) , axis = 0), \
+			np.expand_dims(np.divide((gt_bbox[:, 0] - jit_x1), H) , axis = 1), \
+			np.expand_dims(np.divide((gt_bbox[:, 1] - jit_y1), W) , axis = 1), \
+			np.expand_dims(np.divide((gt_bbox[:, 2] - jit_x2), H) , axis = 1), \
+			np.expand_dims(np.divide((gt_bbox[:, 3] - jit_y2), W) , axis = 1), \
 		], axis = 1)
 
-	feature_rois = np.expand_dims((jittered / img2feat_ratio).astype(int), axis = 0)
+	feature_rois = np.expand_dims(( \
+			np.concatenate([
+				np.expand_dims(jit_x1, axis = 1), \
+				np.expand_dims(jit_y1, axis = 1), \
+				np.expand_dims(jit_x2, axis = 1), \
+				np.expand_dims(jit_y2, axis = 1), \
+				], axis = 1)\
+			), axis = 0)
 	return feature_rois, offsets_targets
 	

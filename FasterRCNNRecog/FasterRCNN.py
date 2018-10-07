@@ -75,7 +75,7 @@ class RPN(nn.Module):
 		# Considering the proposal_py function is processed in feature map size (smaller in number),
 		# it is needed to multiply the roi result.
 		output = output * self.configs["vgg_rate"]
-		return torch.from_numpy(output)
+		return output
 
 	def anchor_targets_layer(self, rpn_prob, gt_boxes):
 		''' For the simpliciry, the datail implementation is moved to the proposal_layer file.
@@ -111,6 +111,8 @@ class RPN(nn.Module):
 			self.loss = self.build_loss(rpn_prob, rpn_bbox_pred,\
 									rpn_labels, rpn_bbox_targets)
 
+		# The returned rois is a numpy array
+		# features is a Tensor
 		return features, rois
 
 	def build_loss(self, prob, bbox_pred, labels, bbox_targets):
@@ -153,7 +155,7 @@ class FasterRCNN(nn.Module):
 		self.score_fc = nn.Sequential(
 				FC(4096, self.num_classes, relu= False),\
 				nn.Softmax() )
-		self.bbox_offset_fc = FC(4096, self.num_classes * 4, relu= False)
+		self.bbox_offset_fc = FC(4096, 4, relu= False)
 
 	def forward(self, x, gt_bbox=None, gt_labels=None):
 		'''	Inputs:
@@ -169,14 +171,15 @@ class FasterRCNN(nn.Module):
 		# or set the rois using gt_bounding boxes.
 		if self.training:
 			assert gt_bbox is not None and gt_labels is not None
-			feat_rois, offsets_targets = self.proposal_targets(rois, gt_bbox, self.img2feat_rate)
+			feat_rois, offsets_targets = self.proposal_targets(rois, gt_bbox, \
+											self.img2feat_rate, features.shape)
 		else:
 			feat_rois = (torch.from_numpy(rois) / self.img2feat_rate).astype(int)
 		# Now pooled is a (G, C, feature_size) 4-dimension tensor
 		pooled = self.roi_pooling(features[0], feat_rois[0])
 
 		# treat the all the proposals as a batch and feed to the rest of the network
-		pooled_fc = self.fcs(pooled)
+		pooled_fc = self.fcs(pooled.reshape((-1, 512 * 7 * 7)))
 		pd_scores = self.score_fc(pooled_fc) # (G, D) Here, D means the number of classes
 		pd_offsets = self.bbox_offset_fc(pooled_fc) # (G * 4) defined as [x1, y1, x2, y2, ...]
 
@@ -188,15 +191,18 @@ class FasterRCNN(nn.Module):
 										gt_labels, \
 										offsets_targets)
 
-		pd_bbox = self.interpret_offsets(rois, pd_offsets)
-		return pd_scores, pd_bbox
+		pd_bbox = self.interpret_offsets(feat_rois, pd_offsets)
+		# return two tensors
+		return pd_scores, pd_bbox * self.img2feat_rate
 
-	def proposal_targets(self, pd_rois, gt_bbox, img2feat_ratio):
+	def proposal_targets(self, pd_rois, gt_bbox, img2feat_ratio, features_shape):
 		'''	for the simplicity, the implementation is put to another file.
 		'''
-		pd_rois = pd_rois.cpu().numpy()
-		gt_bbox = gt_bbox.cpu().numpy()
-		rois, offsets_targets = proposal_targets_py(pd_rois, gt_bbox, img2feat_ratio)
+		pd_rois = pd_rois # This is already a numpy array
+		if isinstance(gt_bbox, torch.Tensor):
+			gt_bbox = gt_bbox.data.cpu().numpy()
+		rois, offsets_targets = proposal_targets_py(pd_rois, gt_bbox, \
+										img2feat_ratio, features_shape)
 		rois = torch.from_numpy(rois)
 		offsets_targets = torch.from_numpy(offsets_targets)
 		return rois, offsets_targets
@@ -214,11 +220,31 @@ class FasterRCNN(nn.Module):
 
 		cel = CEL_criterion(pd_scores, gt_labels)
 
-		sl1 = SL1_criterion(pd_offsets, offsets_targets)
+		sl1 = SL1_criterion(pd_offsets, offsets_targets.float())
 		sl1 = sl1.mean(dim = 0) # for each element along the N's items
 		sl1 = sl1.sum() # The exact sum
 
 		return cel + sl1
+
+	def interpret_offsets(self, rois, pd_offsets):
+		'''	Considering the offsets are all in ratio, it doesn't matter whether you provide
+		the rois in feature map scale or in image scale.
+			This function returns the bounding coordinates in image scale [x1, x2, y1, y2]
+		'''
+		if isinstance(rois, np.ndarray): rois = torch.from_numpy(rois)
+		pd_offsets = pd_offsets.float()
+		rois = rois[0].float()
+		H = rois[:, 2] - rois[:, 0]
+		W = rois[:, 3] - rois[:, 1]
+
+		pd_bbox = torch.cat(( \
+				(torch.mul(pd_offsets[:, 0], H) + rois[:, 0]).unsqueeze(1), \
+				(torch.mul(pd_offsets[:, 1], W) + rois[:, 1]).unsqueeze(1), \
+				(torch.mul(pd_offsets[:, 2], H) + rois[:, 2]).unsqueeze(1), \
+				(torch.mul(pd_offsets[:, 3], W) + rois[:, 3]).unsqueeze(1), \
+			), 1)
+
+		return pd_bbox
 
 	def savetofile(self, filepath):
 		''' Save the parameters of this model to the file, by using state_dict().
@@ -240,7 +266,7 @@ def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 				"weight_decay": 0.0005}
 
 	# initialize the network
-	net = FasterRCNN(80)
+	net = FasterRCNN(91)
 	net.train() # set the network to training mode
 	# Considering I still did not understand why longcw used a pretrained part inside VGG16,
 	# I set the entire network trainable.
@@ -256,11 +282,12 @@ def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 
 		# set up the labels (N items in all)
 		gt_labels = [i["category_id"] for i in targets] # a list of int
+		gt_labels = torch.LongTensor(gt_labels)
 		gt_bbox = [i["bbox"] for i in targets] # a list of 4-element floats
 		gt_bbox = np.array(gt_bbox)
 		x1s, y1s, x2s, y2s = utils.coco2corner(gt_bbox) # change the corner format
-		gt_bbox = np.concatenate([np.expand_dims(x1s, 0), np.expand_dims(y1s, 0),\
-								np.expand_dims(y1s, 0), np.expand_dims(y2s, 0)])
+		gt_bbox = np.concatenate([np.expand_dims(x1s, 1), np.expand_dims(y1s, 1),\
+								np.expand_dims(x2s, 1), np.expand_dims(y2s, 1)], axis = 1)
 
 		# forward (train the two parts together)
 		pd_scores, pd_bbox = net(img_batch, gt_bbox, gt_labels)
@@ -269,7 +296,7 @@ def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 		# backward
 		optimizer.zero_grad()
 		total_loss.backward()
-		uilts.clip_gradient(net, 10.)
+		utils.clip_gradient(net, 10.)
 		optimizer.step()
 
 		# display details to show progress

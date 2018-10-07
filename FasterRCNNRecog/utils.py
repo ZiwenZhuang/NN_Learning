@@ -130,10 +130,10 @@ def coco2corner(coco_bbox):
 	'''
 	if len(coco_bbox.shape) == 2:
 		coco_bbox.transpose()
-	x1 = coco_bbox[0]
-	y1 = coco_bbox[1]
-	x2 = coco_bbox[0] + coco_bbox[2]
-	y2 = coco_bbox[1] + coco_bbox[3]
+	x1 = coco_bbox[:, 0]
+	y1 = coco_bbox[:, 1]
+	x2 = coco_bbox[:, 0] + coco_bbox[:, 2]
+	y2 = coco_bbox[:, 1] + coco_bbox[:, 3]
 	return x1, y1, x2, y2
 
 def clip_gradient(model, clip_norm):
