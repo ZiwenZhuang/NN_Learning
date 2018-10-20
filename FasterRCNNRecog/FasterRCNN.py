@@ -277,9 +277,12 @@ def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 	optimizer = torch.optim.SGD(net.parameters(), lr= config["learning_rate"], momentum= config["momentum"], weight_decay= config["weight_decay"])
 
 	# entering epoch and then prepare image and data for the network
-	epoch_done = 0
+	iterations = 0
+	epoch = 0
+	epoch_size = 10
+	total_loss = 0
 	for img, targets in data_detections:
-		print("Entering epoch: " + str(epoch_done + 1) + "...")
+		if len(targets) == 0: continue
 
 		# get one batch of input (only one image)
 		img_batch = img.unsqueeze(0)
@@ -295,18 +298,23 @@ def train(data_path, store_path = "./FasterRCNNRecog/FasterRCNN_Learnt.pth"):
 
 		# forward (train the two parts together)
 		pd_scores, pd_bbox = net(img_batch, gt_bbox, gt_labels)
-		total_loss = net.loss + net.rpn.loss
+		total_loss += net.loss + net.rpn.loss
 
-		# backward
-		optimizer.zero_grad()
-		total_loss.backward()
-		utils.clip_gradient(net, 10.)
-		optimizer.step()
+		# Check if the iterations can be seen as an epoch.
+		if iterations % epoch_size == 0:
+			# the mean of total_loss
+			total_loss = total_loss / epoch_size
+			# backward
+			optimizer.zero_grad()
+			total_loss.backward()
+			utils.clip_gradient(net, 10.)
+			optimizer.step()
+			# display details to show progress
+			epoch += 1
+			print("In epoch loss: " + str(total_loss))
+			total_loss = 0
 
-		# display details to show progress
-		print("loss: " + str(total_loss))
-
-		epoch_done += 1
+		iterations += 1
 
 	# store the network into file
 	print("Saving learnt model into file: " + store_path)
